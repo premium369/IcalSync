@@ -464,8 +464,14 @@ function LoginPageInner() {
             .auth-email-only hr {
               display: none !important;
             }
-            /* Keep input sizes consistent; ensure iOS zoom prevention */
-            .auth-email-only input { font-size: 16px; }
+            /* Keep inputs identical in size; prevent iOS zoom; ensure consistent box sizing */
+            .auth-email-only input {
+              box-sizing: border-box;
+              width: 100%;
+              height: 44px; /* match email field height */
+              padding: 10px 12px; /* matches Supabase variables above */
+              font-size: 16px; /* prevents iOS zoom */
+            }
           `}</style>
         </div>
 
