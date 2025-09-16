@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { createClient } from "../../../lib/supabase-server";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase-server";
 
 type CreatePropertyBody = { name: string; icalUrls?: string[] };
 
@@ -29,7 +29,7 @@ export async function GET() {
   return NextResponse.json({ data: mapped });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

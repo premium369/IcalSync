@@ -1,7 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { z } from "zod";
 import ical from "node-ical";
+
+type EventRow = {
+  id: string;
+  title: string;
+  start: string;
+  end: string | null;
+  all_day: boolean | null;
+  property_id: string | null;
+};
 
 const EventSchema = z.object({
   id: z.string().uuid().optional(),
@@ -80,7 +89,7 @@ async function fetchIcsEventsForUser(supabase: any, userId: string, propertyId?:
   return events;
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -99,7 +108,8 @@ export async function GET(req: Request) {
   if (propertyId) q = q.eq("property_id", propertyId);
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const manualEvents = (data || []).map((e) => ({
+  const rows = (data ?? []) as EventRow[];
+  const manualEvents = rows.map((e) => ({
     id: e.id,
     title: e.title,
     start: e.start,
@@ -120,7 +130,7 @@ export async function GET(req: Request) {
   return NextResponse.json([...manualEvents, ...icsEvents]);
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const body = await req.json();
   const parsed = EventSchema.safeParse(body);

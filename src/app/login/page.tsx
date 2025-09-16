@@ -2,7 +2,7 @@
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { createClient as createBrowserSupabase } from "@/lib/supabase-browser";
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useRef, useState, useLayoutEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 
@@ -27,7 +27,7 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
-function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElement> }) {
+function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElement | null> }) {
   const [targets, setTargets] = useState<Array<{ input: HTMLInputElement; parent: HTMLElement }>>([]);
   const [visible, setVisible] = useState(() => new Map<HTMLInputElement, boolean>());
   const lastInputsRef = useRef<Set<HTMLInputElement>>(new Set());
@@ -195,7 +195,7 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
   );
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const [supabase] = useState(() => createBrowserSupabase());
   const [redirected, setRedirected] = useState(false);
   const params = useSearchParams();
@@ -305,32 +305,40 @@ export default function LoginPage() {
             showLinks={true}
             magicLink={false}
             providers={[]}
-             localization={{
-               variables: {
-                 sign_in: { email_label: "Email address" },
-               },
-             }}
-           />
-           {/* Eye toggle portals for both Login and Signup views rendered by Supabase Auth */}
-           <PasswordVisibilityToggles root={authRootRef} />
-           {/* Scoped CSS hard-hides any residual social buttons/separators just in case */}
-           <style jsx global>{`
-           .auth-email-only button[data-provider],
-           .auth-email-only button[aria-label*="Sign in with" i],
-           .auth-email-only button[aria-label*="Continue with" i],
-           .auth-email-only a[aria-label*="Sign in with" i],
-           .auth-email-only a[aria-label*="Continue with" i],
-           .auth-email-only [data-testid="social-buttons"],
-           .auth-email-only [data-provider-id],
-           .auth-email-only [role="separator"],
-           .auth-email-only hr {
-           display: none !important;
-           }
-           `}</style>
+            localization={{
+              variables: {
+                sign_in: { email_label: "Email address" },
+              },
+            }}
+          />
+          {/* Eye toggle portals for both Login and Signup views rendered by Supabase Auth */}
+          <PasswordVisibilityToggles root={authRootRef} />
+          {/* Scoped CSS hard-hides any residual social buttons/separators just in case */}
+          <style jsx global>{`
+            .auth-email-only button[data-provider],
+            .auth-email-only button[aria-label*="Sign in with" i],
+            .auth-email-only button[aria-label*="Continue with" i],
+            .auth-email-only a[aria-label*="Sign in with" i],
+            .auth-email-only a[aria-label*="Continue with" i],
+            .auth-email-only [data-testid="social-buttons"],
+            .auth-email-only [data-provider-id],
+            .auth-email-only [role="separator"],
+            .auth-email-only hr {
+              display: none !important;
+            }
+          `}</style>
         </div>
 
         {/* Removed divider and Demo login option */}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }
