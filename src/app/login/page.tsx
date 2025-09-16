@@ -205,10 +205,10 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
           input.type = isText ? 'password' : 'text';
           if (!isText) {
             input.setAttribute('data-eye-target', '');
-+           parent.setAttribute('data-expanded', '');
+            parent.setAttribute('data-expanded', '');
           } else {
             input.removeAttribute('data-eye-target');
-+           parent.removeAttribute('data-expanded');
+            parent.removeAttribute('data-expanded');
           }
           setVisible((prev) => new Map(prev).set(input, !isText));
           if (hadFocus) {
@@ -468,24 +468,26 @@ function LoginPageInner() {
             .auth-email-only hr {
               display: none !important;
             }
-+
-+           /* Password compact/expanded sizing */
-+           .auth-email-only [data-pw-group] input[data-pw-input] {
-+             transition: padding 160ms ease, min-height 160ms ease;
-+             font-size: 16px; /* prevent iOS zoom */
-+           }
-+           /* Default: compact */
-+           .auth-email-only [data-pw-group]:not([data-expanded]) input[data-pw-input] {
-+             padding-top: 6px !important;
-+             padding-bottom: 6px !important;
-+             min-height: 36px;
-+           }
-+           /* Expanded (when revealing password) */
-+           .auth-email-only [data-pw-group][data-expanded] input[data-pw-input] {
-+             padding-top: 10px !important;
-+             padding-bottom: 10px !important;
-+             min-height: 44px;
-+           }
+-
+-           /* Password compact/expanded sizing */
+-           .auth-email-only [data-pw-group] input[data-pw-input] {
+-             transition: padding 160ms ease, min-height 160ms ease;
+-             font-size: 16px; /* prevent iOS zoom */
+-           }
+-           /* Default: compact */
+-           .auth-email-only [data-pw-group]:not([data-expanded]) input[data-pw-input] {
+-             padding-top: 6px !important;
+-             padding-bottom: 6px !important;
+-             min-height: 36px;
+-           }
+-           /* Expanded (when revealing password) */
+-           .auth-email-only [data-pw-group][data-expanded] input[data-pw-input] {
+-             padding-top: 10px !important;
+-             padding-bottom: 10px !important;
+-             min-height: 44px;
+-           }
++           /* Keep input sizes consistent; ensure iOS zoom prevention */
++           .auth-email-only input { font-size: 16px; }
           `}</style>
         </div>
 
