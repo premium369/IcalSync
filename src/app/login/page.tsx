@@ -178,8 +178,6 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
           if (isIOS) {
             const nextVisible = !visible.get(input);
             setVisible((prev) => new Map(prev).set(input, nextVisible));
-            // Toggle expanded size state on parent
-            if (nextVisible) parent.setAttribute('data-expanded', ''); else parent.removeAttribute('data-expanded');
             // Focus the appropriate field and restore caret
             setTimeout(() => {
               const target = nextVisible ? getClone() : input;
@@ -205,10 +203,8 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
           input.type = isText ? 'password' : 'text';
           if (!isText) {
             input.setAttribute('data-eye-target', '');
-            parent.setAttribute('data-expanded', '');
           } else {
             input.removeAttribute('data-eye-target');
-            parent.removeAttribute('data-expanded');
           }
           setVisible((prev) => new Map(prev).set(input, !isText));
           if (hadFocus) {
