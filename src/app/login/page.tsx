@@ -38,7 +38,8 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
     const [style, setStyle] = useState<React.CSSProperties>({ position: 'absolute', zIndex: 10 });
 
     useLayoutEffect(() => {
-      const btnSize = 32; // px
+      const coarse = typeof window !== 'undefined' && 'matchMedia' in window && window.matchMedia('(pointer: coarse)').matches;
+      const btnSize = coarse ? 40 : 32; // larger touch target on mobile
       const gap = 8; // px from input edge
       const compute = () => {
         // Ensure parent is positioning context
@@ -70,11 +71,22 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
       };
     }, [input, parent]);
 
+    const preventBlur = (e: React.SyntheticEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
     return createPortal(
       <button
         type="button"
         data-eye-btn
+        onPointerDown={preventBlur}
+        onMouseDown={preventBlur}
+        onTouchStart={preventBlur}
         onClick={() => {
+          const hadFocus = document.activeElement === input;
+          const start = input.selectionStart;
+          const end = input.selectionEnd;
           const isText = input.type === 'text';
           input.type = isText ? 'password' : 'text';
           if (!isText) {
@@ -83,7 +95,16 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
             input.removeAttribute('data-eye-target');
           }
           setVisible((prev) => new Map(prev).set(input, !isText));
-          input.focus({ preventScroll: true });
+          // Restore focus and caret position without scrolling on mobile
+          if (hadFocus) {
+            setTimeout(() => {
+              try {
+                input.focus({ preventScroll: true });
+                const pos = start != null && end != null ? { s: start, e: end } : { s: input.value.length, e: input.value.length };
+                input.setSelectionRange(pos.s, pos.e);
+              } catch {}
+            }, 0);
+          }
         }}
         aria-label={visible.get(input) ? "Hide password" : "Show password"}
         aria-pressed={visible.get(input) ? true : false}
