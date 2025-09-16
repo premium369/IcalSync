@@ -267,6 +267,12 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
         // Mark this group so we can style compact/expanded sizes via CSS
         parent.setAttribute('data-pw-group', '');
         input.setAttribute('data-pw-input', '');
+
+        // Safety: ensure masked by default unless explicitly toggled to text
+        if (!input.hasAttribute('data-eye-target') && input.type !== 'password') {
+          try { input.type = 'password'; } catch {}
+        }
+
          // Add right padding so the button doesn't overlap characters
          const currentPaddingRight = parseFloat(window.getComputedStyle(input).paddingRight || '0');
          const desiredPadding = 48; // 3rem
@@ -471,6 +477,11 @@ function LoginPageInner() {
               height: 44px; /* match email field height */
               padding: 10px 12px; /* matches Supabase variables above */
               font-size: 16px; /* prevents iOS zoom */
+            }
+            /* Force masking rendering for password inputs as a fallback */
+            .auth-email-only input[type="password"] {
+              -webkit-text-security: disc;
+              text-security: disc; /* non-standard, ignored by most browsers */
             }
           `}</style>
         </div>
