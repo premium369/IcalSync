@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import ical from "node-ical";
 import { createServiceClient } from "@/lib/supabase-server";
 
@@ -30,8 +30,11 @@ function escapeText(text: string) {
   return text.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,|;/g, (m) => `\\${m}`);
 }
 
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
-  const token = params.token;
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  const { token } = await params;
   if (!token) return new NextResponse("Not found", { status: 404 });
 
   const supabase = await createServiceClient();

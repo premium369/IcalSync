@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../lib/supabase-server";
 
 type ApiOneResponse = { data?: any; error?: string };
@@ -25,12 +25,12 @@ async function getOwnedProperty(supabase: Awaited<ReturnType<typeof createClient
   return data;
 }
 
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const id = params.id;
+  const { id } = await params;
   const owner = await getOwnedProperty(supabase, user.id, id);
   if (!owner) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

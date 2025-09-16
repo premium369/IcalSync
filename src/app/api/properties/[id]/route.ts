@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase-server";
 
 type UpdatePropertyBody = { name?: string; icalUrls?: string[] };
@@ -16,12 +16,12 @@ async function getOwnedProperty(supabase: Awaited<ReturnType<typeof createClient
   return data;
 }
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const id = params.id;
+  const { id } = await params;
   const { data, error } = await supabase
     .from("properties")
     .select("id, name, created_at, ical_token, user_id, property_icals(id, url, created_at)")
@@ -40,12 +40,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   return NextResponse.json({ data: result });
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const id = params.id;
+  const { id } = await params;
   const owner = await getOwnedProperty(supabase, user.id, id);
   if (!owner) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -105,12 +105,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   return NextResponse.json({ data: result });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const id = params.id;
+  const { id } = await params;
   const owner = await getOwnedProperty(supabase, user.id, id);
   if (!owner) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
