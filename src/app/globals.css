@@ -1,8 +1,33 @@
 @import "tailwindcss";
 
+/* Theme overrides via data-theme to work with ThemeToggle */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Surfaces and subtle UI tokens */
+  --surface: #ffffff;
+  --surface-border: rgba(0,0,0,0.08);
+  --muted-foreground: #6b7280; /* gray-500 */
+}
+
+html[data-theme="light"] {
+  --background: #ffffff;
+  --foreground: #171717;
+  /* Keep surface aligned with pure white cards on light */
+  --surface: #ffffff;
+  --surface-border: rgba(0,0,0,0.08);
+  --muted-foreground: #6b7280;
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  /* Slightly lifted surface in dark for contrast */
+  --surface: #0d0d0d;
+  --surface-border: rgba(255,255,255,0.10);
+  --muted-foreground: #9ca3af; /* gray-400 */
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -22,5 +47,146 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  transition: background-color 200ms ease, color 200ms ease, background 200ms ease;
+}
+
+/* Stable, translucent header surface tuned per theme */
+html[data-theme="light"] .site-header { background-color: rgba(255,255,255,0.6); }
+html[data-theme="dark"] .site-header { background-color: rgba(10,10,10,0.6); }
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.6);
+  outline-offset: 2px;
+}
+
+/* FullCalendar refinements */
+.fc {
+  --fc-border-color-light: rgba(0,0,0,0.08);
+  --fc-border-color-dark: rgba(255,255,255,0.08);
+  --fc-day-hover-light: rgba(0,0,0,0.03);
+  --fc-day-hover-dark: rgba(255,255,255,0.04);
+  --fc-today-bg: rgba(59,130,246,0.12);
+  font-size: 13px;
+}
+
+.fc-theme-standard .fc-scrollgrid,
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: var(--fc-border-color-light);
+}
+
+html[data-theme="dark"] .fc-theme-standard .fc-scrollgrid,
+html[data-theme="dark"] .fc-theme-standard td,
+html[data-theme="dark"] .fc-theme-standard th {
+  border-color: var(--fc-border-color-dark);
+}
+
+.fc .fc-toolbar-title {
+  font-weight: 600;
+}
+
+.fc .fc-daygrid-day {
+  transition: background-color 150ms ease;
+}
+
+.fc .fc-daygrid-day:hover {
+  background-color: var(--fc-day-hover-light);
+}
+
+html[data-theme="dark"] .fc .fc-daygrid-day:hover {
+  background-color: var(--fc-day-hover-dark);
+}
+
+.fc .fc-daygrid-day-number {
+  font-weight: 500;
+  color: #6b7280; /* gray-500 */
+}
+html[data-theme="dark"] .fc .fc-daygrid-day-number {
+  color: #9ca3af; /* gray-400 */
+}
+
+/* Selected range highlight */
+.fc .fc-highlight {
+  background: rgba(59,130,246,0.25);
+  border-radius: 8px;
+}
+
+/* Today background */
+.fc .fc-day-today {
+  background: var(--fc-today-bg) !important;
+}
+
+/* Event chips */
+.fc .fc-event,
+.fc .fc-daygrid-event {
+  border: 0;
+  box-shadow: none;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Reduce event spacing a bit for denser look */
+.fc .fc-daygrid-event {
+  margin: 2px 2px 4px;
+}
+
+/* Hide native password reveal/clear icons to avoid overlap with custom eye button */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Safari iOS remove inner padding for inputs with buttons overlaying */
+input[type="password"]::-webkit-textfield-decoration-container {
+  display: none;
+}
+
+/* Light theme polish */
+html[data-theme="light"] {
+  /* Softer app background so white cards stand out */
+  --background: #f7f8fb; /* subtle neutral */
+  --foreground: #0a0a0a;
+}
+
+/* Gentle texture for light background */
+html[data-theme="light"] body {
+  background:
+    radial-gradient(1200px 500px at 20% -10%, rgba(59,130,246,0.04), transparent 60%),
+    radial-gradient(1000px 400px at 110% 10%, rgba(99,102,241,0.04), transparent 60%),
+    var(--background);
+}
+
+/* Gentle texture for dark background to match landing visuals */
+html[data-theme="dark"] body {
+  background:
+    radial-gradient(900px 350px at 15% -10%, rgba(59,130,246,0.06), transparent 60%),
+    radial-gradient(900px 350px at 120% 10%, rgba(99,102,241,0.06), transparent 60%),
+    var(--background);
+}
+
+/* Link colors */
+html[data-theme="light"] a { color: #2563eb; }
+html[data-theme="light"] a:hover { color: #1d4ed8; }
+html[data-theme="dark"] a { color: #93c5fd; }
+html[data-theme="dark"] a:hover { color: #bfdbfe; }
+
+/* Card-like surfaces utility (opt-in) */
+.card-surface {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+html[data-theme="dark"] .card-surface {
+  box-shadow: none;
+}
+
+/* Headings slightly heavier for readability */
+h1, h2, h3 { letter-spacing: -0.01em; }
+
+/* Improve focus ring contrast in light mode */
+html[data-theme="light"] :focus-visible {
+  outline-color: rgba(37, 99, 235, 0.7);
 }

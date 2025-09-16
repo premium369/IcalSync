@@ -1,0 +1,112 @@
+Project overview
+- A Next.js 15 app that provides a unified calendar for short‑term rental hosts, combining manual blocks and OTA iCal feeds. Users can manage properties, connect multiple iCal URLs per property, view/update availability in a FullCalendar UI, and export a consolidated iCal per property.
+
+Quickstart (local)
+1) Node 18+ recommended. Install deps: npm install
+2) Create .env.local with required env (see “Environment variables”).
+3) Start dev: npm run dev
+4) Open http://localhost:3000
+
+Key scripts (package.json)
+- dev: next dev --turbopack
+- build: next build --turbopack
+- start: next start
+- lint: eslint
+
+Tech stack
+- Next.js 15, React 19, TypeScript, TailwindCSS v4
+- Supabase (auth + Postgres) via @supabase/ssr
+- FullCalendar (dayGrid, timeGrid, interaction)
+- node-ical for ICS parsing
+
+Environment variables
+- NEXT_PUBLIC_SITE_URL: Base URL for redirects (defaults to http://localhost:3000)
+- NEXT_PUBLIC_SUPABASE_URL: Supabase project URL (public)
+- NEXT_PUBLIC_SUPABASE_ANON_KEY: Supabase anon key (public)
+- SUPABASE_SERVICE_ROLE_KEY: Service role key (server-only; never exposed to the browser)
+- DEMO_EMAIL, DEMO_PASSWORD: Optional demo login for /auth/demo-login
+
+Auth and middleware
+- Middleware syncs Supabase auth cookies and protects /dashboard routes; redirects authenticated users away from /login. See <mcfile name="middleware.ts" path="src/middleware.ts"></mcfile>
+- Server client with cookie support and a separate service client for server-only operations. See <mcfile name="supabase-server.ts" path="src/lib/supabase-server.ts"></mcfile> and <mcfile name="supabase-browser.ts" path="src/lib/supabase-browser.ts"></mcfile>
+
+Database (simplified)
+- properties(id, user_id, name, ical_token, created_at)
+- property_icals(id, property_id, url, created_at)
+- events(id, user_id, property_id, title, start, end, all_day)
+- RLS policies ensure users can only access their own rows (user_id = auth.uid()). See Supabase DDL in <mcfile name="supabase.sql" path="supabase.sql"></mcfile>
+
+API routes (App Router)
+- GET /api/events?propertyId=optional
+  • Returns merged manual events (DB) + OTA ICS events (best-effort) for the user.
+  • Manual events include extendedProps.source="manual"; ICS include extendedProps.source="ics" and OTA metadata.
+  • File: <mcfile name="route.ts" path="src/app/api/events/route.ts"></mcfile>
+- POST /api/events
+  • Body: { title, start, end?, allDay?, propertyId? } -> creates manual block.
+  • Response: normalized event with color and extendedProps.source="manual".
+  • File: <mcfile name="route.ts" path="src/app/api/events/route.ts"></mcfile>
+- PATCH /api/events/[id]
+  • Body: partial { title?, start?, end?, allDay? } updates manual event; ICS events are not editable.
+  • File: <mcfile name="route.ts" path="src/app/api/events/[id]/route.ts"></mcfile>
+- DELETE /api/events/[id]
+  • Deletes a manual event owned by the user.
+  • File: <mcfile name="route.ts" path="src/app/api/events/[id]/route.ts"></mcfile>
+- GET /api/properties
+  • Lists user’s properties with icalToken and icalUrls[].
+  • POST body: { name, icalUrls?: string[] } creates property and optional iCal links.
+  • File: <mcfile name="route.ts" path="src/app/api/properties/route.ts"></mcfile>
+- GET/PUT/DELETE /api/properties/[id]
+  • GET returns property detail. PUT updates name and replaces iCal URLs. DELETE removes property.
+  • File: <mcfile name="route.ts" path="src/app/api/properties/[id]/route.ts"></mcfile>
+- POST /api/properties/[id]/rotate-ical
+  • Rotates the per‑property ical_token used for public export links.
+  • File: <mcfile name="route.ts" path="src/app/api/properties/[id]/rotate-ical/route.ts"></mcfile>
+- GET /api/ical/[token]
+  • Public export. Builds a VCALENDAR by combining manual blocks and connected OTA ICS items for the matched property token.
+  • File: <mcfile name="route.ts" path="src/app/api/ical/[token]/route.ts"></mcfile>
+- GET /api/auth/session
+  • Returns { user } from Supabase. File: <mcfile name="route.ts" path="src/app/api/auth/session/route.ts"></mcfile>
+- GET/POST /api/webviewClick
+  • No‑op with 204; placeholder for tracking. File: <mcfile name="route.ts" path="src/app/api/webviewClick/route.ts"></mcfile>
+
+Frontend pages
+- App layout: global styles, header, theme toggle, and toast provider. See <mcfile name="layout.tsx" path="src/app/layout.tsx"></mcfile>
+- Home /: marketing sections and features grid. See <mcfile name="page.tsx" path="src/app/page.tsx"></mcfile>
+- Login /login: Supabase Auth UI in email‑only mode, password visibility toggles injected via portals, redirects to /dashboard on sign‑in. See <mcfile name="page.tsx" path="src/app/login/page.tsx"></mcfile>
+- Dashboard /dashboard: Overview cards and navigation to features such as properties and calendar deep links. See <mcfile name="page.tsx" path="src/app/dashboard/page.tsx"></mcfile> and <mcfile name="layout.tsx" path="src/app/dashboard/layout.tsx"></mcfile>
+- Calendar /calendar: FullCalendar UI with dayGrid/timeGrid, manual blocking, drag/resize for manual events, prevention of overlaps onto ICS items, property filter, and localStorage for last selected property. See <mcfile name="page.tsx" path="src/app/calendar/page.tsx"></mcfile>
+
+Calendar specifics
+- Event source: calls GET /api/events?propertyId=… then client‑filters per selected property.
+- Creating manual blocks via selection -> POST /api/events.
+- Editing manual blocks via drag/resize -> PATCH /api/events/[id].
+- Deleting manual blocks via click -> DELETE /api/events/[id].
+- URL params: supports propertyId (applied on mount and persisted in localStorage). Planned deep‑link params: focus=today, view=(dayGridMonth|timeGridWeek), type=(blocked|all). See TODOs.
+- Types: CalendarEvent in <mcfile name="events.ts" path="src/types/events.ts"></mcfile>
+
+Components
+- Spinner: minimal animated spinner. See <mcfile name="Spinner.tsx" path="src/components/Spinner.tsx"></mcfile>
+- ToastProvider, ThemeToggle: app‑level utilities; imported in layout.
+
+ICS import/export
+- Import: server fetches each connected feed URL with node‑ical and maps VEVENTs into CalendarEvent with source="ics" and OTA detection (Airbnb/Booking/VRBO/Expedia) for color coding.
+- Export: per‑property signed link /api/ical/[token] renders VCALENDAR with merged manual + OTA items.
+
+How to run against Supabase
+1) Create a Supabase project.
+2) Apply SQL in supabase.sql to create tables, indexes, and RLS.
+3) Set env: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (server-only).
+4) Start the app and sign up/in; data is scoped by user_id via RLS.
+
+Extending the system
+- Add a new property field: update DB, then extend selects in the properties API and dashboard UIs.
+- Add another OTA detection: adjust mapping logic in events API to tag and color events.
+- Support more calendar deep links: parse additional query params on /calendar and call FullCalendar API accordingly.
+
+Known issues / notes
+- The GET handler in /api/auth/session constructs the Supabase client without awaiting the async factory; consider using `await createClient()` in that route for consistency.
+- Service role key must never be exposed to the browser; only used by server handlers like /api/ical/[token].
+
+Open TODOs (from planning)
+- Update /calendar to fully support deep links: focus=today, view, propertyId, type; apply on mount.
+- Manually verify /, /dashboard, /calendar visuals and UX and fine‑tune as needed.

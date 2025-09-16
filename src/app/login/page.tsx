@@ -1,0 +1,336 @@
+"use client";
+import { Auth } from "@supabase/auth-ui-react";
+import { ThemeSupa } from "@supabase/auth-ui-shared";
+import { createClient as createBrowserSupabase } from "@/lib/supabase-browser";
+import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
+
+function EyeIcon({ open }: { open: boolean }) {
+  if (open) {
+    // Eye open
+    return (
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    );
+  }
+  // Eye closed (off)
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 3l18 18" />
+      <path d="M10.58 10.58a2 2 0 102.83 2.83" />
+      <path d="M9.88 4.24A9.73 9.73 0 0112 4c6.5 0 10 8 10 8a19.36 19.36 0 01-3.3 4.74" />
+      <path d="M6.35 6.35C3.94 7.86 2 12 2 12a19.38 19.38 0 006.11 6.11" />
+    </svg>
+  );
+}
+
+function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElement> }) {
+  const [targets, setTargets] = useState<Array<{ input: HTMLInputElement; parent: HTMLElement }>>([]);
+  const [visible, setVisible] = useState(() => new Map<HTMLInputElement, boolean>());
+  const lastInputsRef = useRef<Set<HTMLInputElement>>(new Set());
+  const rafId = useRef<number | null>(null);
+
+  // Helper: button that portals into parent and positions itself relative to the input
+  function EyeButton({ input, parent }: { input: HTMLInputElement; parent: HTMLElement }) {
+    const [style, setStyle] = useState<React.CSSProperties>({ position: 'absolute', zIndex: 10 });
+
+    useLayoutEffect(() => {
+      const btnSize = 32; // px
+      const gap = 8; // px from input edge
+      const compute = () => {
+        // Ensure parent is positioning context
+        const cs = window.getComputedStyle(parent);
+        if (!['relative','absolute','fixed'].includes(cs.position)) {
+          parent.style.position = 'relative';
+        }
+        const rectParent = parent.getBoundingClientRect();
+        const rect = input.getBoundingClientRect();
+        const left = (rect.left - rectParent.left) + rect.width - btnSize - gap;
+        const top = (rect.top - rectParent.top) + rect.height / 2;
+        setStyle({ position: 'absolute', left, top, transform: 'translateY(-50%)', width: btnSize, height: btnSize, zIndex: 10 });
+      };
+      compute();
+
+      let ro: ResizeObserver | null = null;
+      if ('ResizeObserver' in window) {
+        ro = new ResizeObserver(() => compute());
+        ro.observe(input);
+        ro.observe(parent);
+      }
+      const onWin = () => compute();
+      window.addEventListener('resize', onWin);
+      window.addEventListener('scroll', onWin, true);
+      return () => {
+        window.removeEventListener('resize', onWin);
+        window.removeEventListener('scroll', onWin, true);
+        ro?.disconnect();
+      };
+    }, [input, parent]);
+
+    return createPortal(
+      <button
+        type="button"
+        data-eye-btn
+        onClick={() => {
+          const isText = input.type === 'text';
+          input.type = isText ? 'password' : 'text';
+          if (!isText) {
+            input.setAttribute('data-eye-target', '');
+          } else {
+            input.removeAttribute('data-eye-target');
+          }
+          setVisible((prev) => new Map(prev).set(input, !isText));
+          input.focus({ preventScroll: true });
+        }}
+        aria-label={visible.get(input) ? "Hide password" : "Show password"}
+        aria-pressed={visible.get(input) ? true : false}
+        title={visible.get(input) ? "Hide password" : "Show password"}
+        className="absolute grid place-items-center rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        style={style}
+      >
+        <EyeIcon open={!!visible.get(input)} />
+      </button>,
+      parent
+    );
+  }
+
+  // Scan for password inputs under the Auth widget and prepare portal targets (debounced, equality-checked)
+  useEffect(() => {
+    const scheduleScan = () => {
+      if (rafId.current !== null) cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(scan);
+    };
+
+    const scan = () => {
+      rafId.current = null;
+      const container = root.current;
+      if (!container) return;
+      const found = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="password"], input[type="text"][data-eye-target]'));
+
+      // Build a Set for identity comparison
+      const newSet = new Set(found);
+      const prevSet = lastInputsRef.current;
+      let changed = false;
+      if (newSet.size !== prevSet.size) {
+        changed = true;
+      } else {
+        for (const el of newSet) {
+          if (!prevSet.has(el)) { changed = true; break; }
+        }
+      }
+      if (!changed) return; // No structural changes -> skip state updates
+
+      const prepared: Array<{ input: HTMLInputElement; parent: HTMLElement }> = [];
+      for (const input of found) {
+        const parent = input.parentElement as HTMLElement | null;
+        if (!parent) continue;
+        // Ensure the parent can host absolutely positioned button
+        const style = window.getComputedStyle(parent);
+        if (!['relative', 'absolute', 'fixed'].includes(style.position)) {
+          parent.style.position = 'relative';
+        }
+        // Add right padding so the button doesn't overlap characters
+        const currentPaddingRight = parseFloat(window.getComputedStyle(input).paddingRight || '0');
+        const desiredPadding = 48; // 3rem
+        if (currentPaddingRight < desiredPadding) {
+          input.style.paddingRight = '3rem';
+        }
+        prepared.push({ input, parent });
+      }
+
+      // Update targets only when changed
+      setTargets(prepared);
+      // Update visible map: add new inputs with default, remove missing inputs
+      setVisible((prev) => {
+        const next = new Map(prev);
+        // add
+        for (const input of newSet) {
+          if (!next.has(input)) next.set(input, input.type === 'text');
+        }
+        // remove
+        for (const input of Array.from(next.keys())) {
+          if (!newSet.has(input)) next.delete(input);
+        }
+        return next;
+      });
+
+      // Commit the new set
+      lastInputsRef.current = newSet;
+    };
+
+    // Initial scan
+    const initId = requestAnimationFrame(scan);
+
+    // Observe DOM changes inside the auth widget (view switching sign in <-> sign up)
+    const obs = new MutationObserver((records) => {
+      // Ignore mutations caused solely by our own eye buttons
+      const onlyOurButtons = records.length > 0 && records.every((r) => {
+        const added = Array.from(r.addedNodes);
+        const removed = Array.from(r.removedNodes);
+        const all = added.concat(removed);
+        return all.length > 0 && all.every((n) => n instanceof HTMLElement && (n as HTMLElement).hasAttribute('data-eye-btn'));
+      });
+      if (onlyOurButtons) return;
+      scheduleScan();
+    });
+    if (root.current) {
+      obs.observe(root.current, { childList: true, subtree: true });
+    }
+    return () => {
+      obs.disconnect();
+      cancelAnimationFrame(initId);
+      if (rafId.current !== null) cancelAnimationFrame(rafId.current);
+    };
+  }, [root]);
+
+  return (
+    <>
+      {targets.map(({ input, parent }, idx) => (
+        <EyeButton key={idx} input={input} parent={parent} />
+      ))}
+    </>
+  );
+}
+
+export default function LoginPage() {
+  const [supabase] = useState(() => createBrowserSupabase());
+  const [redirected, setRedirected] = useState(false);
+  const params = useSearchParams();
+  const error = params.get("error");
+  const authRootRef = useRef<HTMLDivElement>(null);
+
+  // Hide any third-party provider buttons/dividers if the Auth UI renders them
+  useEffect(() => {
+    const root = authRootRef.current;
+    if (!root) return;
+    const hideProviders = () => {
+      const btns = root.querySelectorAll<HTMLElement>(
+        'button[data-provider], button[aria-label*="Sign in with" i], button[aria-label*="Continue with" i]'
+      );
+      btns.forEach((b) => (b.style.display = "none"));
+      // Hide nearby dividers/separators if present
+      root.querySelectorAll<HTMLElement>('hr, [role="separator"]').forEach((el) => (el.style.display = "none"));
+    };
+    hideProviders();
+    const mo = new MutationObserver(() => hideProviders());
+    mo.observe(root, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, []);
+
+  // If already signed in, send to dashboard
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (mounted && data.user && !redirected) {
+        setRedirected(true);
+        window.location.href = "/dashboard";
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [supabase, redirected]);
+
+  // On new sign-in, send to dashboard
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === "SIGNED_IN" && !redirected) {
+        setRedirected(true);
+        window.location.href = "/dashboard";
+      }
+    });
+    return () => {
+      listener.subscription?.unsubscribe();
+    };
+  }, [supabase, redirected]);
+
+  return (
+    <div className="max-w-md mx-auto">
+      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
+        <h1 className="text-2xl font-semibold mb-1">Sign in or create your account</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Welcome back. Please sign in to continue.</p>
+
+        {error && (
+          <div className="mb-4 rounded-md border border-red-300/60 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300 px-3 py-2 text-sm" aria-live="polite">
+            {error === "demo_not_configured" && "Demo login is not configured. Set DEMO_EMAIL and DEMO_PASSWORD in .env.local."}
+            {error === "demo_failed" && "Demo login failed. Please try again using your email and password."}
+          </div>
+        )}
+
+        <div ref={authRootRef} className="auth-email-only">
+          <Auth
+            supabaseClient={supabase as any}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: "#2563eb",
+                    brandAccent: "#1d4ed8",
+                    inputText: "#111827",
+                    inputPlaceholder: "#6b7280",
+                    inputBackground: "#ffffff",
+                    inputBorder: "#e5e7eb",
+                    messageText: "#111827",
+                  },
+                  fonts: {
+                    bodyFontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
+                    buttonFontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
+                    inputFontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
+                  },
+                  space: {
+                    inputPadding: "10px 12px",
+                    buttonPadding: "10px 12px",
+                  },
+                  borderWidths: { inputBorderWidth: "1px" },
+                  radii: { inputBorderRadius: "8px", buttonBorderRadius: "8px" },
+                },
+                dark: {
+                  colors: {
+                    inputText: "#e5e7eb",
+                    inputPlaceholder: "#9ca3af",
+                    inputBackground: "#0b0b0b",
+                    inputBorder: "#262626",
+                    messageText: "#e5e7eb",
+                  },
+                },
+              },
+            }}
+            redirectTo={typeof window !== "undefined" ? window.location.origin : undefined}
+            view="sign_in"
+            showLinks={true}
+            magicLink={false}
+            providers={[]}
+             localization={{
+               variables: {
+                 sign_in: { email_label: "Email address" },
+               },
+             }}
+           />
+           {/* Eye toggle portals for both Login and Signup views rendered by Supabase Auth */}
+           <PasswordVisibilityToggles root={authRootRef} />
+           {/* Scoped CSS hard-hides any residual social buttons/separators just in case */}
+           <style jsx global>{`
+           .auth-email-only button[data-provider],
+           .auth-email-only button[aria-label*="Sign in with" i],
+           .auth-email-only button[aria-label*="Continue with" i],
+           .auth-email-only a[aria-label*="Sign in with" i],
+           .auth-email-only a[aria-label*="Continue with" i],
+           .auth-email-only [data-testid="social-buttons"],
+           .auth-email-only [data-provider-id],
+           .auth-email-only [role="separator"],
+           .auth-email-only hr {
+           display: none !important;
+           }
+           `}</style>
+        </div>
+
+        {/* Removed divider and Demo login option */}
+      </div>
+    </div>
+  );
+}
