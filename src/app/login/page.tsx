@@ -2,7 +2,7 @@
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { createClient as createBrowserSupabase } from "@/lib/supabase-browser";
-import { useEffect, useRef, useState, useLayoutEffect, Suspense } from "react";
+import { useEffect, useRef, useState, useLayoutEffect, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 
@@ -32,11 +32,102 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
   const [visible, setVisible] = useState(() => new Map<HTMLInputElement, boolean>());
   const lastInputsRef = useRef<Set<HTMLInputElement>>(new Set());
   const rafId = useRef<number | null>(null);
+  const clonesRef = useRef<Map<HTMLInputElement, HTMLInputElement>>(new Map());
+  const registerClone = useCallback((base: HTMLInputElement, clone: HTMLInputElement | null) => {
+    const map = clonesRef.current;
+    if (clone) map.set(base, clone);
+    else map.delete(base);
+  }, []);
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  // Helper: overlay text input clone on iOS to avoid type toggling glitches
+  function TwinInput({ input, parent, show, registerClone }: { input: HTMLInputElement; parent: HTMLElement; show: boolean; registerClone: (base: HTMLInputElement, clone: HTMLInputElement | null) => void; }) {
+    const ref = useRef<HTMLInputElement>(null);
+    const [style, setStyle] = useState<React.CSSProperties>({ position: 'absolute', zIndex: 9, opacity: show ? 1 : 0, pointerEvents: show ? 'auto' : 'none' });
+  
+    useLayoutEffect(() => {
+      const coarse = typeof window !== 'undefined' && 'matchMedia' in window && window.matchMedia('(pointer: coarse)').matches;
+      const gapForEye = 8 + (coarse ? 40 : 32); // keep space on right for eye button
+      const compute = () => {
+        const cs = window.getComputedStyle(parent);
+        if (!['relative','absolute','fixed'].includes(cs.position)) parent.style.position = 'relative';
+        const rectParent = parent.getBoundingClientRect();
+        const rect = input.getBoundingClientRect();
+        const left = (rect.left - rectParent.left);
+        const top = (rect.top - rectParent.top);
+        setStyle((prev) => ({ ...prev, position: 'absolute', left, top, width: rect.width, height: rect.height, transform: 'translate(0,0)', zIndex: 9 }));
+      };
+      compute();
+      let ro: ResizeObserver | null = null;
+      if ('ResizeObserver' in window) {
+        ro = new ResizeObserver(() => compute());
+        ro.observe(input);
+        ro.observe(parent);
+      }
+      const onWin = () => compute();
+      window.addEventListener('resize', onWin);
+      window.addEventListener('scroll', onWin, true);
+      return () => {
+        window.removeEventListener('resize', onWin);
+        window.removeEventListener('scroll', onWin, true);
+        ro?.disconnect();
+      };
+    }, [input, parent]);
+  
+    // Register clone and synchronize values in both directions
+    useEffect(() => {
+      const node = ref.current;
+      if (!node) return;
+      registerClone(input, node);
+      // Initialize with the same value
+      if (node.value !== input.value) node.value = input.value;
+  
+      const syncFromOriginal = () => {
+        if (node.value !== input.value) node.value = input.value;
+      };
+      const syncToOriginal = (e: Event) => {
+        const v = (e.target as HTMLInputElement).value;
+        if (input.value !== v) {
+          input.value = v;
+          // Dispatch input event so React/Supabase listeners get notified
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      };
+      input.addEventListener('input', syncFromOriginal);
+      node.addEventListener('input', syncToOriginal);
+      return () => {
+        input.removeEventListener('input', syncFromOriginal);
+        node.removeEventListener('input', syncToOriginal);
+        registerClone(input, null);
+      };
+    }, [input, registerClone]);
+  
+    // Reflect visibility in style
+    useEffect(() => {
+      setStyle((prev) => ({ ...prev, opacity: show ? 1 : 0, pointerEvents: show ? 'auto' : 'none' }));
+    }, [show]);
+  
+    return createPortal(
+      <input
+        ref={ref}
+        type="text"
+        aria-hidden={!show}
+        className={input.className}
+        placeholder={input.placeholder}
+        // Ensure enough right padding for the eye button
+        style={{ ...style, boxSizing: 'border-box', paddingRight: '3rem' }}
+        autoCapitalize={input.autocapitalize || 'off' as any}
+        autoCorrect={"off"}
+        spellCheck={false}
+      />,
+      parent
+    );
+  }
 
   // Helper: button that portals into parent and positions itself relative to the input
-  function EyeButton({ input, parent }: { input: HTMLInputElement; parent: HTMLElement }) {
+  function EyeButton({ input, parent, getClone }: { input: HTMLInputElement; parent: HTMLElement; getClone: () => HTMLInputElement | undefined }) {
     const [style, setStyle] = useState<React.CSSProperties>({ position: 'absolute', zIndex: 10 });
-
+  
     useLayoutEffect(() => {
       const coarse = typeof window !== 'undefined' && 'matchMedia' in window && window.matchMedia('(pointer: coarse)').matches;
       const btnSize = coarse ? 40 : 32; // larger touch target on mobile
@@ -54,7 +145,7 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
         setStyle({ position: 'absolute', left, top, transform: 'translateY(-50%)', width: btnSize, height: btnSize, zIndex: 10 });
       };
       compute();
-
+  
       let ro: ResizeObserver | null = null;
       if ('ResizeObserver' in window) {
         ro = new ResizeObserver(() => compute());
@@ -70,12 +161,12 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
         ro?.disconnect();
       };
     }, [input, parent]);
-
+  
     const preventBlur = (e: React.SyntheticEvent) => {
       e.preventDefault();
       e.stopPropagation();
     };
-
+  
     return createPortal(
       <button
         type="button"
@@ -84,6 +175,27 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
         onMouseDown={preventBlur}
         onTouchStart={preventBlur}
         onClick={() => {
+          if (isIOS) {
+            const nextVisible = !visible.get(input);
+            setVisible((prev) => new Map(prev).set(input, nextVisible));
+            // Focus the appropriate field and restore caret
+            setTimeout(() => {
+              const target = nextVisible ? getClone() : input;
+              if (target) {
+                try {
+                  const active = document.activeElement as HTMLInputElement | null;
+                  const s = active?.selectionStart ?? target.value.length;
+                  const e = active?.selectionEnd ?? target.value.length;
+                  target.focus({ preventScroll: true });
+                  if (typeof s === 'number' && typeof e === 'number' && 'setSelectionRange' in target) {
+                    (target as HTMLInputElement).setSelectionRange(s, e);
+                  }
+                } catch {}
+              }
+            }, 0);
+            return;
+          }
+          // Non‑iOS: safe to toggle type directly
           const hadFocus = document.activeElement === input;
           const start = input.selectionStart;
           const end = input.selectionEnd;
@@ -95,7 +207,6 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
             input.removeAttribute('data-eye-target');
           }
           setVisible((prev) => new Map(prev).set(input, !isText));
-          // Restore focus and caret position without scrolling on mobile
           if (hadFocus) {
             setTimeout(() => {
               try {
@@ -210,7 +321,10 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
   return (
     <>
       {targets.map(({ input, parent }, idx) => (
-        <EyeButton key={idx} input={input} parent={parent} />
+        <TwinInput key={`tw-${idx}`} input={input} parent={parent} show={!!visible.get(input)} registerClone={registerClone} />
+      ))}
+      {targets.map(({ input, parent }, idx) => (
+        <EyeButton key={`btn-${idx}`} input={input} parent={parent} getClone={() => clonesRef.current.get(input)} />
       ))}
     </>
   );
