@@ -366,7 +366,10 @@ function LoginPageInner() {
   const params = useSearchParams();
   const error = params.get("error");
   const authRootRef = useRef<HTMLDivElement>(null);
-
+  const [iosFallbackError, setIosFallbackError] = useState<string | null>(null);
+  const [iosFallbackLoading, setIosFallbackLoading] = useState(false);
+  const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/i.test(navigator.userAgent);
+ 
   // Hide any third-party provider buttons/dividers if the Auth UI renders them
   useEffect(() => {
     const root = authRootRef.current;
@@ -384,7 +387,32 @@ function LoginPageInner() {
     mo.observe(root, { childList: true, subtree: true });
     return () => mo.disconnect();
   }, []);
-
+ 
+  // On iOS: sanitize email before the Auth UI submits to avoid hidden whitespace/autocorrect issues
+  useEffect(() => {
+    if (!isIOS) return;
+    const root = authRootRef.current;
+    if (!root) return;
+    const onSubmitCapture = (e: Event) => {
+      try {
+        const targetEl = e.target as Element | null;
+        const form = (targetEl && 'closest' in targetEl ? (targetEl as Element).closest('form') : null) as HTMLFormElement | null;
+        if (!form) return;
+         const email = form.querySelector<HTMLInputElement>('input[type="email"]');
+         if (email) {
+           const trimmed = email.value.trim();
+           if (trimmed !== email.value) {
+             email.value = trimmed;
+             email.dispatchEvent(new Event('input', { bubbles: true }));
+           }
+         }
+      } catch { /* noop */ }
+    };
+    // Use capture to run before inner handlers
+    root.addEventListener('submit', onSubmitCapture, true);
+    return () => root.removeEventListener('submit', onSubmitCapture, true);
+  }, [isIOS]);
+ 
   // If already signed in, send to dashboard
   useEffect(() => {
     let mounted = true;
@@ -399,7 +427,7 @@ function LoginPageInner() {
       mounted = false;
     };
   }, [supabase, redirected]);
-
+ 
   // On new sign-in, send to dashboard
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (event) => {
@@ -412,20 +440,20 @@ function LoginPageInner() {
       listener.subscription?.unsubscribe();
     };
   }, [supabase, redirected]);
-
+ 
   return (
     <div className="max-w-md mx-auto">
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
         <h1 className="text-2xl font-semibold mb-1">Sign in or create your account</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Welcome back. Please sign in to continue.</p>
-
+ 
         {error && (
           <div className="mb-4 rounded-md border border-red-300/60 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300 px-3 py-2 text-sm" aria-live="polite">
             {error === "demo_not_configured" && "Demo login is not configured. Set DEMO_EMAIL and DEMO_PASSWORD in .env.local."}
             {error === "demo_failed" && "Demo login failed. Please try again using your email and password."}
           </div>
         )}
-
+ 
         <div ref={authRootRef} className="auth-email-only">
           <Auth
             supabaseClient={supabase as any}
@@ -478,6 +506,47 @@ function LoginPageInner() {
           />
           {/* Eye toggle portals for both Login and Signup views rendered by Supabase Auth */}
           <PasswordVisibilityToggles root={authRootRef} />
+          {/* iOS fallback sign-in: calls Supabase directly and shows precise error, without changing layout for others */}
+          {isIOS && (
+            <div className="mt-3">
+              {iosFallbackError && (
+                <div className="mb-2 rounded-md border border-amber-300/60 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300 px-3 py-2 text-xs" aria-live="polite">
+                  {iosFallbackError}
+                </div>
+              )}
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:underline disabled:opacity-60"
+                disabled={iosFallbackLoading}
+                onClick={async () => {
+                  setIosFallbackError(null);
+                  setIosFallbackLoading(true);
+                  try {
+                    const root = authRootRef.current;
+                    const email = root?.querySelector<HTMLInputElement>('input[type="email"]')?.value?.trim() || "";
+                    const pwInput = root?.querySelector<HTMLInputElement>('input[type="password"], input[type="text"][data-eye-target]');
+                    const password = pwInput?.value ?? "";
+                    if (!email || !password) {
+                      setIosFallbackError("Please enter both email and password.");
+                      return;
+                    }
+                    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+                    if (signInError) {
+                      setIosFallbackError(signInError.message || "Sign in failed. Please check your credentials.");
+                    } else {
+                      // success handled by onAuthStateChange -> redirects
+                    }
+                  } catch (err: any) {
+                    setIosFallbackError(err?.message || "Unexpected error during sign in.");
+                  } finally {
+                    setIosFallbackLoading(false);
+                  }
+                }}
+              >
+                {iosFallbackLoading ? "Signing in…" : "Having trouble on iPhone? Try fallback sign-in"}
+              </button>
+            </div>
+          )}
           {/* Scoped CSS hard-hides any residual social buttons/separators just in case */}
           <style jsx global>{`
             .auth-email-only button[data-provider],
@@ -498,27 +567,40 @@ function LoginPageInner() {
               height: 44px; /* match email field height */
               padding: 10px 12px; /* matches Supabase variables above */
               font-size: 16px; /* prevents iOS zoom */
-              color: #111827; /* ensure visible text in light mode */
-              -webkit-text-fill-color: #111827; /* iOS Safari explicit text color */
-              caret-color: #111827;
+              color: #111827 !important; /* ensure visible text in light mode */
+              -webkit-text-fill-color: currentColor !important; /* iOS Safari explicit text color */
+              caret-color: currentColor !important;
+              background-color: #ffffff !important; /* avoid transparent/contrast issues */
+              -webkit-appearance: none;
+              appearance: none;
+              text-rendering: optimizeLegibility;
+            }
+            .auth-email-only input::placeholder {
+              color: #6b7280 !important;
+              opacity: 1; /* iOS sometimes lowers placeholder opacity */
             }
             .auth-email-only input[type="password"] {
-              color: #111827;
-              -webkit-text-fill-color: #111827;
+              color: #111827 !important;
+              -webkit-text-fill-color: currentColor !important;
             }
             /* Dark mode explicit color to ensure visibility */
             html.dark .auth-email-only input {
-              color: #e5e7eb;
-              -webkit-text-fill-color: #e5e7eb;
-              caret-color: #e5e7eb;
+              color: #e5e7eb !important;
+              -webkit-text-fill-color: currentColor !important;
+              caret-color: currentColor !important;
+              background-color: #0b0b0b !important;
+            }
+            html.dark .auth-email-only input::placeholder {
+              color: #9ca3af !important;
+              opacity: 1;
             }
             html.dark .auth-email-only input[type="password"] {
-              color: #e5e7eb;
-              -webkit-text-fill-color: #e5e7eb;
+              color: #e5e7eb !important;
+              -webkit-text-fill-color: currentColor !important;
             }
           `}</style>
         </div>
-
+ 
         {/* Removed divider and Demo login option */}
       </div>
     </div>
