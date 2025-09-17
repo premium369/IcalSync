@@ -369,6 +369,7 @@ function LoginPageInner() {
   const [iosFallbackError, setIosFallbackError] = useState<string | null>(null);
   const [iosFallbackLoading, setIosFallbackLoading] = useState(false);
   const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/i.test(navigator.userAgent);
+  const [iosDiag, setIosDiag] = useState<{ emailLen: number; emailTrimDelta: number; pwLen: number; lastAuthMsg: string }>({ emailLen: 0, emailTrimDelta: 0, pwLen: 0, lastAuthMsg: "" });
  
   // Hide any third-party provider buttons/dividers if the Auth UI renders them
   useEffect(() => {
@@ -411,6 +412,48 @@ function LoginPageInner() {
     // Use capture to run before inner handlers
     root.addEventListener('submit', onSubmitCapture, true);
     return () => root.removeEventListener('submit', onSubmitCapture, true);
+  }, [isIOS]);
+
+  // iOS diagnostics: track input lengths and last auth message (no secrets)
+  useEffect(() => {
+    if (!isIOS) return;
+    const root = authRootRef.current;
+    if (!root) return;
+    const update = () => {
+      const emailEl = root.querySelector<HTMLInputElement>('input[type="email"]');
+      const pwEl = root.querySelector<HTMLInputElement>('input[type="password"], input[type="text"][data-eye-target]');
+      if (emailEl) {
+        const v = emailEl.value ?? "";
+        const t = v.trim();
+        setIosDiag(prev => ({ ...prev, emailLen: v.length, emailTrimDelta: v.length - t.length }));
+      }
+      if (pwEl) {
+        const p = pwEl.value ?? "";
+        setIosDiag(prev => ({ ...prev, pwLen: p.length }));
+      }
+    };
+    const onInput = (e: Event) => update();
+    // listen to input events on container
+    root.addEventListener('input', onInput, true);
+    // run once
+    update();
+    return () => root.removeEventListener('input', onInput, true);
+  }, [isIOS]);
+
+  useEffect(() => {
+    if (!isIOS) return;
+    const root = authRootRef.current;
+    if (!root) return;
+    const pickMsg = () => {
+      const el = root.querySelector<HTMLElement>('[role="alert"], [data-testid*="message" i], .supabase-auth-ui_ui-message, [class*="message"]');
+      const txt = el?.textContent?.trim() || "";
+      if (txt) setIosDiag(prev => ({ ...prev, lastAuthMsg: txt }));
+    };
+    // initial pull and observe for changes
+    pickMsg();
+    const mo = new MutationObserver(() => pickMsg());
+    mo.observe(root, { childList: true, subtree: true, characterData: true });
+    return () => mo.disconnect();
   }, [isIOS]);
  
   // If already signed in, send to dashboard
@@ -545,8 +588,15 @@ function LoginPageInner() {
               >
                 {iosFallbackLoading ? "Signing in…" : "Having trouble on iPhone? Try fallback sign-in"}
               </button>
-            </div>
-          )}
+              {/* Tiny diagnostic (temporary) - shows no secrets */}
+              <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400" aria-live="polite">
+                 iOS diagnostics — Email length: {iosDiag.emailLen}, Trim delta: {iosDiag.emailTrimDelta}, Password length: {iosDiag.pwLen}
+                 {iosDiag.lastAuthMsg ? (
+                   <div className="mt-1">Last auth message: "{iosDiag.lastAuthMsg}"</div>
+                 ) : null}
+               </div>
+             </div>
+           )}
           {/* Scoped CSS hard-hides any residual social buttons/separators just in case */}
           <style jsx global>{`
             .auth-email-only button[data-provider],
