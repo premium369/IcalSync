@@ -242,10 +242,22 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
       if (!container) return;
       const found = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="password"], input[type="text"][data-eye-target]'));
 
-      // Build a Set for identity comparison
-      const newSet = new Set(found);
-      const prevSet = lastInputsRef.current;
-      let changed = false;
+      // Also sanitize email input behavior to avoid iOS auto-corrections/capitalization
+      const email = container.querySelector<HTMLInputElement>('input[type="email"]');
+      if (email) {
+        try {
+          email.setAttribute('autocapitalize', 'off');
+          email.setAttribute('autocorrect', 'off');
+          email.setAttribute('spellcheck', 'false');
+          email.setAttribute('autocomplete', 'email');
+          email.setAttribute('inputmode', 'email');
+        } catch {}
+      }
+
+       // Build a Set for identity comparison
+       const newSet = new Set(found);
+       const prevSet = lastInputsRef.current;
+       let changed = false;
       if (newSet.size !== prevSet.size) {
         changed = true;
       } else {
@@ -271,6 +283,15 @@ function PasswordVisibilityToggles({ root }: { root: React.RefObject<HTMLDivElem
         // Safety: ensure masked by default unless explicitly toggled to text
         if (!input.hasAttribute('data-eye-target') && input.type !== 'password') {
           try { input.type = 'password'; } catch {}
+        }
+
+        // Prevent mobile keyboards from altering the typed password/email
+        input.setAttribute('autocapitalize', 'off');
+        input.setAttribute('autocorrect', 'off');
+        input.setAttribute('spellcheck', 'false');
+        if (input.type === 'password') {
+          input.setAttribute('autocomplete', 'current-password');
+          input.setAttribute('inputmode', 'text');
         }
 
          // Add right padding so the button doesn't overlap characters
@@ -477,11 +498,23 @@ function LoginPageInner() {
               height: 44px; /* match email field height */
               padding: 10px 12px; /* matches Supabase variables above */
               font-size: 16px; /* prevents iOS zoom */
+              color: #111827; /* ensure visible text in light mode */
+              -webkit-text-fill-color: #111827; /* iOS Safari explicit text color */
+              caret-color: #111827;
             }
-            /* Force masking rendering for password inputs as a fallback */
             .auth-email-only input[type="password"] {
-              -webkit-text-security: disc;
-              text-security: disc; /* non-standard, ignored by most browsers */
+              color: #111827;
+              -webkit-text-fill-color: #111827;
+            }
+            /* Dark mode explicit color to ensure visibility */
+            html.dark .auth-email-only input {
+              color: #e5e7eb;
+              -webkit-text-fill-color: #e5e7eb;
+              caret-color: #e5e7eb;
+            }
+            html.dark .auth-email-only input[type="password"] {
+              color: #e5e7eb;
+              -webkit-text-fill-color: #e5e7eb;
             }
           `}</style>
         </div>
