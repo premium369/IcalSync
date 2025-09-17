@@ -370,7 +370,21 @@ function LoginPageInner() {
   const [iosFallbackLoading, setIosFallbackLoading] = useState(false);
   const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/i.test(navigator.userAgent);
   const [iosDiag, setIosDiag] = useState<{ emailLen: number; emailTrimDelta: number; pwLen: number; lastAuthMsg: string }>({ emailLen: 0, emailTrimDelta: 0, pwLen: 0, lastAuthMsg: "" });
- 
+  // Local state for iOS-only custom form
+  const [iosEmail, setIosEmail] = useState("");
+  const [iosPassword, setIosPassword] = useState("");
+  const [iosShowPw, setIosShowPw] = useState(false);
+  const [iosSubmitting, setIosSubmitting] = useState(false);
+  const supabaseHost = (() => {
+    try {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      return url ? new URL(url).host : "(unset)";
+    } catch {
+      return "(invalid url)";
+    }
+  })();
+  const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "";
+
   // Hide any third-party provider buttons/dividers if the Auth UI renders them
   useEffect(() => {
     const root = authRootRef.current;
@@ -498,105 +512,148 @@ function LoginPageInner() {
         )}
  
         <div ref={authRootRef} className="auth-email-only">
-          <Auth
-            supabaseClient={supabase as any}
-            appearance={{
-              theme: ThemeSupa,
-              variables: {
-                default: {
-                  colors: {
-                    brand: "#2563eb",
-                    brandAccent: "#1d4ed8",
-                    inputText: "#111827",
-                    inputPlaceholder: "#6b7280",
-                    inputBackground: "#ffffff",
-                    inputBorder: "#e5e7eb",
-                    messageText: "#111827",
-                  },
-                  fonts: {
-                    bodyFontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
-                    buttonFontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
-                    inputFontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
-                  },
-                  space: {
-                    inputPadding: "10px 12px",
-                    buttonPadding: "10px 12px",
-                  },
-                  borderWidths: { inputBorderWidth: "1px" },
-                  radii: { inputBorderRadius: "8px", buttonBorderRadius: "8px" },
-                },
-                dark: {
-                  colors: {
-                    inputText: "#e5e7eb",
-                    inputPlaceholder: "#9ca3af",
-                    inputBackground: "#0b0b0b",
-                    inputBorder: "#262626",
-                    messageText: "#e5e7eb",
-                  },
-                },
-              },
-            }}
-            redirectTo={typeof window !== "undefined" ? window.location.origin : undefined}
-            view="sign_in"
-            showLinks={true}
-            magicLink={false}
-            providers={[]}
-            localization={{
-              variables: {
-                sign_in: { email_label: "Email address" },
-              },
-            }}
-          />
-          {/* Eye toggle portals for both Login and Signup views rendered by Supabase Auth */}
-          <PasswordVisibilityToggles root={authRootRef} />
-          {/* iOS fallback sign-in: calls Supabase directly and shows precise error, without changing layout for others */}
-          {isIOS && (
-            <div className="mt-3">
-              {iosFallbackError && (
-                <div className="mb-2 rounded-md border border-amber-300/60 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300 px-3 py-2 text-xs" aria-live="polite">
-                  {iosFallbackError}
-                </div>
-              )}
-              <button
-                type="button"
-                className="text-xs text-blue-600 hover:underline disabled:opacity-60"
-                disabled={iosFallbackLoading}
-                onClick={async () => {
-                  setIosFallbackError(null);
-                  setIosFallbackLoading(true);
-                  try {
-                    const root = authRootRef.current;
-                    const email = root?.querySelector<HTMLInputElement>('input[type="email"]')?.value?.trim() || "";
-                    const pwInput = root?.querySelector<HTMLInputElement>('input[type="password"], input[type="text"][data-eye-target]');
-                    const password = pwInput?.value ?? "";
-                    if (!email || !password) {
-                      setIosFallbackError("Please enter both email and password.");
-                      return;
-                    }
+          {isIOS ? (
+            <form
+              className="space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setIosFallbackError(null);
+                setIosSubmitting(true);
+                try {
+                  const email = iosEmail.trim();
+                  const password = iosPassword;
+                  if (!email || !password) {
+                    setIosFallbackError("Please enter both email and password.");
+                  } else {
                     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
                     if (signInError) {
                       setIosFallbackError(signInError.message || "Sign in failed. Please check your credentials.");
-                    } else {
-                      // success handled by onAuthStateChange -> redirects
                     }
-                  } catch (err: any) {
-                    setIosFallbackError(err?.message || "Unexpected error during sign in.");
-                  } finally {
-                    setIosFallbackLoading(false);
                   }
-                }}
+                } catch (err: any) {
+                  setIosFallbackError(err?.message || "Unexpected error during sign in.");
+                } finally {
+                  setIosSubmitting(false);
+                }
+              }}
+            >
+              {iosFallbackError && (
+                <div className="rounded-md border border-amber-300/60 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300 px-3 py-2 text-xs" aria-live="polite">
+                  {iosFallbackError}
+                </div>
+              )}
+              <div>
+                <label htmlFor="ios-email" className="sr-only">Email</label>
+                <input
+                  id="ios-email"
+                  type="email"
+                  required
+                  value={iosEmail}
+                  onChange={(e) => setIosEmail(e.target.value)}
+                  placeholder="Email address"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="email"
+                  autoComplete="email"
+                />
+              </div>
+              <div className="relative">
+                <label htmlFor="ios-password" className="sr-only">Password</label>
+                <input
+                  id="ios-password"
+                  type={iosShowPw ? "text" : "password"}
+                  required
+                  value={iosPassword}
+                  onChange={(e) => setIosPassword(e.target.value)}
+                  placeholder="Password"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  autoComplete="current-password"
+                  inputMode="text"
+                  style={{ paddingRight: "3rem" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIosShowPw((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 grid place-items-center rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-pressed={iosShowPw}
+                  aria-label={iosShowPw ? "Hide password" : "Show password"}
+                  title={iosShowPw ? "Hide password" : "Show password"}
+                >
+                  <EyeIcon open={iosShowPw} />
+                </button>
+              </div>
+              <button
+                type="submit"
+                className="w-full inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+                disabled={iosSubmitting}
               >
-                {iosFallbackLoading ? "Signing in…" : "Having trouble on iPhone? Try fallback sign-in"}
+                {iosSubmitting ? "Signing in…" : "Sign in"}
               </button>
-              {/* Tiny diagnostic (temporary) - shows no secrets */}
-              <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400" aria-live="polite">
-                 iOS diagnostics — Email length: {iosDiag.emailLen}, Trim delta: {iosDiag.emailTrimDelta}, Password length: {iosDiag.pwLen}
-                 {iosDiag.lastAuthMsg ? (
-                   <div className="mt-1">Last auth message: "{iosDiag.lastAuthMsg}"</div>
-                 ) : null}
-               </div>
-             </div>
-           )}
+              {/* Tiny diagnostics (temporary) - shows no secrets */}
+              <div className="text-[11px] text-gray-500 dark:text-gray-400" aria-live="polite">
+                iOS diagnostics — Email length: {iosEmail.length}, Trim delta: {iosEmail.length - iosEmail.trim().length}, Password length: {iosPassword.length}
+                <div className="mt-1">Supabase host: {supabaseHost}</div>
+                <div className="mt-1 truncate" title={userAgent}>UA: {userAgent}</div>
+              </div>
+            </form>
+          ) : (
+            <>
+              <Auth
+                supabaseClient={supabase as any}
+                appearance={{
+                  theme: ThemeSupa,
+                  variables: {
+                    default: {
+                      colors: {
+                        brand: "#2563eb",
+                        brandAccent: "#1d4ed8",
+                        inputText: "#111827",
+                        inputPlaceholder: "#6b7280",
+                        inputBackground: "#ffffff",
+                        inputBorder: "#e5e7eb",
+                        messageText: "#111827",
+                      },
+                      fonts: {
+                        bodyFontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
+                        buttonFontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
+                        inputFontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui",
+                      },
+                      space: {
+                        inputPadding: "10px 12px",
+                        buttonPadding: "10px 12px",
+                      },
+                      borderWidths: { inputBorderWidth: "1px" },
+                      radii: { inputBorderRadius: "8px", buttonBorderRadius: "8px" },
+                    },
+                    dark: {
+                      colors: {
+                        inputText: "#e5e7eb",
+                        inputPlaceholder: "#9ca3af",
+                        inputBackground: "#0b0b0b",
+                        inputBorder: "#262626",
+                        messageText: "#e5e7eb",
+                      },
+                    },
+                  },
+                }}
+                redirectTo={typeof window !== "undefined" ? window.location.origin : undefined}
+                view="sign_in"
+                showLinks={true}
+                magicLink={false}
+                providers={[]}
+                localization={{
+                  variables: {
+                    sign_in: { email_label: "Email address" },
+                  },
+                }}
+              />
+              {/* Eye toggle portals for both Login and Signup views rendered by Supabase Auth */}
+              <PasswordVisibilityToggles root={authRootRef} />
+            </>
+          )}
           {/* Scoped CSS hard-hides any residual social buttons/separators just in case */}
           <style jsx global>{`
             .auth-email-only button[data-provider],
