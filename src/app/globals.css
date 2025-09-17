@@ -138,11 +138,6 @@ input::-ms-clear {
   display: none;
 }
 
-/* Safari iOS remove inner padding for inputs with buttons overlaying */
-input[type="password"]::-webkit-textfield-decoration-container {
-  display: none;
-}
-
 /* Light theme polish */
 html[data-theme="light"] {
   /* Softer app background so white cards stand out */
