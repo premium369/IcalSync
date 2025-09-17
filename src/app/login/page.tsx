@@ -368,13 +368,23 @@ function LoginPageInner() {
   const authRootRef = useRef<HTMLDivElement>(null);
   const [iosFallbackError, setIosFallbackError] = useState<string | null>(null);
   const [iosFallbackLoading, setIosFallbackLoading] = useState(false);
-  const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/i.test(navigator.userAgent);
+  const force = params.get("force");
+  const isIOS = (() => {
+    if (force === "ios") return true;
+    if (typeof navigator === "undefined") return false;
+    const ua = navigator.userAgent || "";
+    const platform = (navigator as any).platform || "";
+    const maxTouchPoints = (navigator as any).maxTouchPoints || 0;
+    const uaIOS = /iPad|iPhone|iPod/i.test(ua);
+    const iPadOSMacLike = platform === "MacIntel" && maxTouchPoints > 1;
+    return uaIOS || iPadOSMacLike;
+  })();
   const [iosDiag, setIosDiag] = useState<{ emailLen: number; emailTrimDelta: number; pwLen: number; lastAuthMsg: string }>({ emailLen: 0, emailTrimDelta: 0, pwLen: 0, lastAuthMsg: "" });
-  // Local state for iOS-only custom form
-  const [iosEmail, setIosEmail] = useState("");
-  const [iosPassword, setIosPassword] = useState("");
-  const [iosShowPw, setIosShowPw] = useState(false);
-  const [iosSubmitting, setIosSubmitting] = useState(false);
+   // Local state for iOS-only custom form
+   const [iosEmail, setIosEmail] = useState("");
+   const [iosPassword, setIosPassword] = useState("");
+   const [iosShowPw, setIosShowPw] = useState(false);
+   const [iosSubmitting, setIosSubmitting] = useState(false);
   const supabaseHost = (() => {
     try {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -550,13 +560,15 @@ function LoginPageInner() {
                   required
                   value={iosEmail}
                   onChange={(e) => setIosEmail(e.target.value)}
-                  placeholder="Email address"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  inputMode="email"
-                  autoComplete="email"
-                />
+                   onInput={(e) => setIosEmail((e.target as HTMLInputElement).value)}
+                   placeholder="Email address"
+                   autoCapitalize="off"
+                   autoCorrect="off"
+                   spellCheck={false}
+                   inputMode="email"
+                   autoComplete="email"
+                   className="w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-200 dark:placeholder-gray-400"
+                 />
               </div>
               <div className="relative">
                 <label htmlFor="ios-password" className="sr-only">Password</label>
@@ -566,14 +578,16 @@ function LoginPageInner() {
                   required
                   value={iosPassword}
                   onChange={(e) => setIosPassword(e.target.value)}
-                  placeholder="Password"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  autoComplete="current-password"
-                  inputMode="text"
-                  style={{ paddingRight: "3rem" }}
-                />
+                   onInput={(e) => setIosPassword((e.target as HTMLInputElement).value)}
+                   placeholder="Password"
+                   autoCapitalize="off"
+                   autoCorrect="off"
+                   spellCheck={false}
+                   autoComplete="current-password"
+                   inputMode="text"
+                   style={{ paddingRight: "3rem" }}
+                   className="w-full rounded-md border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-gray-200 dark:placeholder-gray-400"
+                 />
                 <button
                   type="button"
                   onClick={() => setIosShowPw((v) => !v)}
@@ -595,9 +609,10 @@ function LoginPageInner() {
               {/* Tiny diagnostics (temporary) - shows no secrets */}
               <div className="text-[11px] text-gray-500 dark:text-gray-400" aria-live="polite">
                 iOS diagnostics — Email length: {iosEmail.length}, Trim delta: {iosEmail.length - iosEmail.trim().length}, Password length: {iosPassword.length}
-                <div className="mt-1">Supabase host: {supabaseHost}</div>
-                <div className="mt-1 truncate" title={userAgent}>UA: {userAgent}</div>
-              </div>
+                 <div className="mt-1">Branch: {isIOS ? "iOS custom" : "Auth UI"}{force === "ios" ? " (forced)" : ""}</div>
+                 <div className="mt-1">Supabase host: {supabaseHost}</div>
+                 <div className="mt-1 truncate" title={userAgent}>UA: {userAgent}</div>
+               </div>
             </form>
           ) : (
             <>
@@ -681,6 +696,13 @@ function LoginPageInner() {
               -webkit-appearance: none;
               appearance: none;
               text-rendering: optimizeLegibility;
+              color-scheme: light !important; /* prevent Safari auto-darkening from inverting input text */
+              text-shadow: 0 0 0 currentColor; /* paint fix for iOS invisible text */
+              opacity: 1 !important; /* defeat odd compositing */
+              mix-blend-mode: normal !important;
+              filter: none !important;
+              backface-visibility: hidden;
+              transform: translateZ(0);
             }
             .auth-email-only input::placeholder {
               color: #6b7280 !important;
@@ -690,22 +712,39 @@ function LoginPageInner() {
               color: #111827 !important;
               -webkit-text-fill-color: currentColor !important;
             }
-            /* Dark mode explicit color to ensure visibility */
-            html.dark .auth-email-only input {
-              color: #e5e7eb !important;
-              -webkit-text-fill-color: currentColor !important;
-              caret-color: currentColor !important;
-              background-color: #0b0b0b !important;
+            /* Autofill overrides (iOS/Safari) */
+            .auth-email-only input:-webkit-autofill,
+            .auth-email-only input:-webkit-autofill:hover,
+            .auth-email-only input:-webkit-autofill:focus,
+            .auth-email-only input:-webkit-autofill:active {
+            -webkit-text-fill-color: #111827 !important;
+            transition: background-color 9999s ease-out 0s, color 9999s ease-out 0s;
+            caret-color: #111827 !important;
             }
-            html.dark .auth-email-only input::placeholder {
-              color: #9ca3af !important;
-              opacity: 1;
+             /* Dark mode explicit color to ensure visibility */
+             html.dark .auth-email-only input {
+               color: #e5e7eb !important;
+               -webkit-text-fill-color: currentColor !important;
+               caret-color: currentColor !important;
+               background-color: #0b0b0b !important;
+               color-scheme: light !important; /* still force light scheme to avoid auto-inversion */
+             }
+             html.dark .auth-email-only input::placeholder {
+               color: #9ca3af !important;
+               opacity: 1;
+             }
+             html.dark .auth-email-only input[type="password"] {
+               color: #e5e7eb !important;
+               -webkit-text-fill-color: currentColor !important;
+             }
+            html.dark .auth-email-only input:-webkit-autofill,
+            html.dark .auth-email-only input:-webkit-autofill:hover,
+            html.dark .auth-email-only input:-webkit-autofill:focus,
+            html.dark .auth-email-only input:-webkit-autofill:active {
+            -webkit-text-fill-color: #e5e7eb !important;
+            caret-color: #e5e7eb !important;
             }
-            html.dark .auth-email-only input[type="password"] {
-              color: #e5e7eb !important;
-              -webkit-text-fill-color: currentColor !important;
-            }
-          `}</style>
+           `}</style>
         </div>
  
         {/* Removed divider and Demo login option */}
