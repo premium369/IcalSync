@@ -3,6 +3,7 @@ import { Auth } from "@supabase/auth-ui-react";
 import { createClient as createBrowserSupabase } from "@/lib/supabase-browser";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { ThemeMinimal } from "@supabase/auth-ui-shared";
 
 function LoginPageInner() {
   const [supabase] = useState(() => createBrowserSupabase());
@@ -40,9 +41,9 @@ function LoginPageInner() {
 
   return (
     <div className="max-w-md mx-auto">
-      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold mb-1">Sign in</h1>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Welcome back. Please sign in to continue.</p>
+      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-900 p-6 shadow-sm text-white">
+        <h1 className="text-2xl font-semibold mb-1 text-white">Sign in</h1>
+        <p className="text-sm mb-6 text-white/80">Welcome back. Please sign in to continue.</p>
 
         {error && (
           <div className="mb-4 rounded-md border border-red-300/60 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300 px-3 py-2 text-sm" aria-live="polite">
@@ -58,6 +59,39 @@ function LoginPageInner() {
           providers={[]}
           magicLink={false}
           redirectTo={typeof window !== "undefined" ? window.location.origin : undefined}
+          appearance={
+            {
+              theme: ThemeMinimal,
+              variables: {
+                default: {
+                  colors: {
+                    brand: "#2563eb", // blue-600
+                    brandAccent: "#1d4ed8", // blue-700
+                    background: "#ffffff",
+                    text: "#111827", // gray-900
+                    inputBackground: "#ffffff",
+                    inputText: "#111827",
+                    anchorText: "#2563eb",
+                  },
+                  radii: { input: "0.375rem", button: "0.375rem" },
+                },
+                dark: {
+                  colors: {
+                    brand: "#60a5fa", // blue-400
+                    brandAccent: "#3b82f6", // blue-500
+                  },
+                },
+              },
+              style: {
+                container: { background: "transparent", border: "0", boxShadow: "none" },
+                label: { color: "#ffffff" },
+                input: { backgroundColor: "#ffffff", color: "#111827", borderColor: "rgba(0,0,0,0.15)" },
+                anchor: { color: "#2563eb" },
+                button: { borderRadius: "0.375rem" },
+              },
+              className: "supabase-auth",
+            } as any
+          }
         />
       </div>
     </div>

@@ -185,3 +185,85 @@ h1, h2, h3 { letter-spacing: -0.01em; }
 html[data-theme="light"] :focus-visible {
   outline-color: rgba(37, 99, 235, 0.7);
 }
+
+/* --- Supabase Auth UI (appearance.className = "supabase-auth") light-mode fixes --- */
+html[data-theme="light"] .supabase-auth {
+  color: #111827;
+}
+/* Ensure internal surfaces from the library don't paint dark in light mode */
+html[data-theme="light"] .supabase-auth [class*="card"],
+html[data-theme="light"] .supabase-auth [class*="Card"],
+html[data-theme="light"] .supabase-auth [class*="container"],
+html[data-theme="light"] .supabase-auth [class*="panel"],
+html[data-theme="light"] .supabase-auth > div {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* Headings and intro text set to white per request */
+html[data-theme="light"] .supabase-auth h1,
+html[data-theme="light"] .supabase-auth h2,
+html[data-theme="light"] .supabase-auth h3,
+html[data-theme="light"] .supabase-auth p[role="note"],
+html[data-theme="light"] .supabase-auth p.intro,
+html[data-theme="light"] .supabase-auth .intro-text {
+  color: #ffffff !important;
+}
+/* Labels white */
+html[data-theme="light"] .supabase-auth label,
+html[data-theme="light"] .supabase-auth [class*="label"],
+html[data-theme="light"] .supabase-auth [role="heading"] {
+  color: #ffffff !important;
+}
+/* Inputs */
+html[data-theme="light"] .supabase-auth input[type="email"],
+html[data-theme="light"] .supabase-auth input[type="password"],
+html[data-theme="light"] .supabase-auth input[type="text"],
+html[data-theme="light"] .supabase-auth input,
+html[data-theme="light"] .supabase-auth textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: rgba(0,0,0,0.15) !important;
+}
+/* Links */
+html[data-theme="light"] .supabase-auth a { color: #2563eb !important; }
+
+/* Buttons (prevent black hover in light mode) */
+html[data-theme="light"] .supabase-auth button,
+html[data-theme="light"] .supabase-auth button[type="submit"],
+html[data-theme="light"] .supabase-auth [role="button"],
+html[data-theme="light"] .supabase-auth .sbui-btn,
+html[data-theme="light"] .supabase-auth [class*="Button"],
+html[data-theme="light"] .supabase-auth [class*="button"] {
+  background-color: #2563eb !important; /* blue-600 */
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+html[data-theme="light"] .supabase-auth button:hover,
+html[data-theme="light"] .supabase-auth button[type="submit"]:hover,
+html[data-theme="light"] .supabase-auth [role="button"]:hover,
+html[data-theme="light"] .supabase-auth .sbui-btn:hover,
+html[data-theme="light"] .supabase-auth [class*="Button"]:hover,
+html[data-theme="light"] .supabase-auth [class*="button"]:hover,
+html[data-theme="light"] .supabase-auth button:active,
+html[data-theme="light"] .supabase-auth button[type="submit"]:active,
+html[data-theme="light"] .supabase-auth [role="button"]:active,
+html[data-theme="light"] .supabase-auth .sbui-btn:active,
+html[data-theme="light"] .supabase-auth [class*="Button"]:active,
+html[data-theme="light"] .supabase-auth [class*="button"]:active {
+  background-color: #1d4ed8 !important; /* blue-700 */
+  color: #ffffff !important;
+}
+html[data-theme="light"] .supabase-auth button:focus-visible,
+html[data-theme="light"] .supabase-auth button[type="submit"]:focus-visible,
+html[data-theme="light"] .supabase-auth [role="button"]:focus-visible,
+html[data-theme="light"] .supabase-auth .sbui-btn:focus-visible,
+html[data-theme="light"] .supabase-auth [class*="Button"]:focus-visible,
+html[data-theme="light"] .supabase-auth [class*="button"]:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.8) !important;
+  outline-offset: 2px !important;
+}
+html[data-theme="light"] .supabase-auth button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
