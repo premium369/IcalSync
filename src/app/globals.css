@@ -161,11 +161,11 @@ html[data-theme="dark"] body {
     var(--background);
 }
 
-/* Link colors - low specificity so component utilities win */
-:where(html[data-theme="light"]) a { color: #2563eb; }
-:where(html[data-theme="light"]) a:hover { color: #1d4ed8; }
-:where(html[data-theme="dark"]) a { color: #93c5fd; }
-:where(html[data-theme="dark"]) a:hover { color: #bfdbfe; }
+/* Link colors - low specificity and only for unclassed text links */
+:where(html[data-theme="light"]) a:not([class]) { color: #2563eb; }
+:where(html[data-theme="light"]) a:not([class]):hover { color: #1d4ed8; }
+:where(html[data-theme="dark"]) a:not([class]) { color: #93c5fd; }
+:where(html[data-theme="dark"]) a:not([class]):hover { color: #bfdbfe; }
 
 /* Card-like surfaces utility (opt-in) */
 .card-surface {
