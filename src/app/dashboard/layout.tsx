@@ -26,10 +26,29 @@ function useCurrentPage() {
   return { pathname, current };
 }
 
+function useAdmin(): { isAdmin: boolean } {
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        const j = await res.json();
+        const email: string | undefined = j?.user?.email;
+        const raw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || "";
+        const admins = raw.split(",").map((s) => s.trim()).filter(Boolean);
+        setIsAdmin(!!email && admins.includes(email));
+      } catch {}
+    })();
+  }, []);
+  return { isAdmin };
+}
+
 function DesktopNav({ currentHref }: { currentHref: string }) {
+  const { isAdmin } = useAdmin();
+  const pages = isAdmin ? [...PAGES, { label: "Admin", href: "/dashboard/admin/upgrade-requests" }] : PAGES;
   return (
     <nav className="space-y-2 text-sm">
-      {PAGES.map((p) => (
+      {pages.map((p) => (
         <Link
           key={p.href}
           href={p.href}
@@ -51,14 +70,16 @@ function DesktopNav({ currentHref }: { currentHref: string }) {
 function MobileDropdown() {
   const router = useRouter();
   const { pathname, current } = useCurrentPage();
+  const { isAdmin } = useAdmin();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
   // Order menu: current page first, then others
   const ordered = useMemo(() => {
-    const rest = PAGES.filter((p) => p.href !== current.href);
+    const base = isAdmin ? [...PAGES, { label: "Admin", href: "/dashboard/admin/upgrade-requests" }] : PAGES;
+    const rest = base.filter((p) => p.href !== current.href);
     return [current, ...rest];
-  }, [current]);
+  }, [current, isAdmin]);
 
   // Close on outside click / ESC
   useEffect(() => {

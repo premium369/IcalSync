@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { getEffectivePropertyLimit, ensureUserPlanRow } from "@/lib/plans";
 
 type CreatePropertyBody = { name: string; icalUrls?: string[] };
 
@@ -39,6 +40,38 @@ export async function POST(req: NextRequest) {
 
   const name = (body.name || "").trim();
   if (!name) return NextResponse.json({ error: "Property name is required" }, { status: 400 });
+
+  // Enforce per-plan property count limits (trial-aware)
+  try {
+    // Ensure a plan row exists (creates default Basic + trial if missing)
+    const planRow = await ensureUserPlanRow(supabase, user.id);
+
+    // Count existing properties for this user
+    const { count } = await supabase
+      .from("properties")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    const limit = getEffectivePropertyLimit(planRow);
+    if (limit !== null && typeof count === "number" && count >= limit) {
+      return NextResponse.json(
+        { error: `You have reached your property limit (${limit}). Please request an upgrade on the billing page.`, upgradeUrl: "/dashboard/settings" },
+        { status: 403 }
+      );
+    }
+  } catch (_e) {
+    // If plan table doesn't exist or any plan error occurs, fall back to Basic limit of 1
+    const { count } = await supabase
+      .from("properties")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if (typeof count === "number" && count >= 1) {
+      return NextResponse.json(
+        { error: "You have reached your property limit (1). Please request an upgrade on the billing page.", upgradeUrl: "/dashboard/settings" },
+        { status: 403 }
+      );
+    }
+  }
 
   const rawIcal = Array.isArray(body.icalUrls) ? body.icalUrls : [];
   const icalUrls = rawIcal.map((s) => (s || "").trim()).filter(Boolean);

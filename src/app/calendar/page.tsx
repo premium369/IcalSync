@@ -14,10 +14,22 @@ export default function CalendarPage() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"dayGridMonth" | "timeGridWeek">("dayGridMonth");
   const [lastSyncedAt, setLastSyncedAt] = useState<string>("");
+  const [lastNotesCount, setLastNotesCount] = useState<number>(0);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
   const [properties, setProperties] = useState<PropertyItem[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<"all" | "manual" | "ics">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "manual" | "ics" | "notes">("all");
   const calendarRef = useRef<FullCalendar | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  // Selection modal state for choosing block vs note
+  const [selectionOpen, setSelectionOpen] = useState(false);
+  const [selectionAction, setSelectionAction] = useState<"block" | "note">("block");
+  const [selectionNoteText, setSelectionNoteText] = useState("");
+  const [selectionStartStr, setSelectionStartStr] = useState<string>("");
+  const [selectionEndStr, setSelectionEndStr] = useState<string>("");
+  const [selectionAllDay, setSelectionAllDay] = useState<boolean>(true);
 
   const fetchEvents = async (propertyId?: string | null) => {
     setLoading(true);
@@ -26,13 +38,44 @@ export default function CalendarPage() {
       if (propertyId) params.set("propertyId", propertyId);
       const qs = params.toString();
       const res = await fetch(`/api/events${qs ? `?${qs}` : ""}`, { cache: "no-store" });
-      const data = await res.json();
-      setEvents(data);
+      let data: any[] = [];
+      if (res.ok) {
+        try { data = await res.json(); setEventsError(null); } catch { data = []; setEventsError("Failed to parse events"); }
+      } else {
+        try { const j = await res.json(); setEventsError(j?.error || "Failed to load events"); } catch { setEventsError("Failed to load events"); }
+      }
+
+      // Fetch property notes and map to calendar events
+      const nr = await fetch(`/api/notes${qs ? `?${qs}` : ""}`, { cache: "no-store" });
+      let notes: any[] = [];
+      if (nr.ok) {
+        try { notes = await nr.json(); setNotesError(null); } catch { notes = []; setNotesError("Failed to parse notes"); }
+      } else {
+        try { const j = await nr.json(); setNotesError(j?.error || "Failed to load notes"); } catch { setNotesError("Failed to load notes"); }
+      }
+      const noteEvents = (notes || []).map((n: any) => ({
+        id: n.id,
+        title: `📝 ${n.text}`,
+        start: n.note_date, // YYYY-MM-DD
+        end: undefined,
+        allDay: true,
+        color: "#F59E0B", // amber
+        extendedProps: { source: "note", propertyId: n.property_id, noteText: n.text },
+      }));
+
+      // Prioritize notes so they appear first in day cells
+      setEvents([...(noteEvents || []), ...(data || [])]);
       setLastSyncedAt(new Date().toISOString());
+      setLastNotesCount((notes || []).length);
     } finally {
       setLoading(false);
     }
   };
+
+  // Prevent hydration mismatch by rendering certain dynamic values only after mount
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Load properties for dropdown
   useEffect(() => {
@@ -72,7 +115,7 @@ export default function CalendarPage() {
     const focus = url.searchParams.get("focus"); // today
     const v = url.searchParams.get("view") as "dayGridMonth" | "timeGridWeek" | null;
     const pid = url.searchParams.get("propertyId");
-    const t = url.searchParams.get("type") as "manual" | "ics" | null;
+    const t = url.searchParams.get("type") as "manual" | "ics" | "notes" | null;
 
     if (v && (v === "dayGridMonth" || v === "timeGridWeek")) {
       setView(v);
@@ -87,7 +130,7 @@ export default function CalendarPage() {
       setSelectedPropertyId(pid);
       try { localStorage.setItem("calendar:selectedPropertyId", pid); } catch {}
     }
-    if (t === "manual" || t === "ics") setTypeFilter(t);
+    if (t === "manual" || t === "ics" || t === "notes") setTypeFilter(t);
   }, []);
 
   // Refetch events whenever selectedPropertyId changes, and set up periodic refresh
@@ -134,30 +177,21 @@ export default function CalendarPage() {
       return;
     }
 
-    const isBlocking = confirm("Block selected date range?");
-    calendarApi.unselect();
-    if (!isBlocking) return;
-
-    const payload = {
-      title: "Blocked",
-      start: selectInfo.startStr,
-      end: selectInfo.endStr,
-      allDay: selectInfo.allDay,
-      propertyId: selectedPropertyId,
-    } as any;
-
-    const res = await fetch("/api/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) fetchEvents(selectedPropertyId);
+    // Open modal to choose block vs note and optionally enter note
+    setSelectionStartStr(selectInfo.startStr);
+    setSelectionEndStr(selectInfo.endStr);
+    setSelectionAllDay(!!selectInfo.allDay);
+    setSelectionAction("block");
+    setSelectionNoteText("");
+    setSelectionOpen(true);
   };
 
   const handleEventChange = async (changeInfo: any) => {
     const ev = changeInfo.event;
-    const isIcs = ev.extendedProps?.source === "ics";
-    if (isIcs) {
+    const src = ev.extendedProps?.source;
+    const isIcs = src === "ics";
+    const isNote = src === "note";
+    if (isIcs || isNote) {
       changeInfo.revert();
       return;
     }
@@ -177,8 +211,27 @@ export default function CalendarPage() {
 
   const handleEventClick = async (clickInfo: any) => {
     const ev = clickInfo.event;
-    const isIcs = ev.extendedProps?.source === "ics";
+    const src = ev.extendedProps?.source;
+    const isIcs = src === "ics";
+    const isNote = src === "note";
     if (isIcs) return;
+    if (isNote) {
+      const current = ev.extendedProps?.noteText as string | undefined;
+      const next = prompt("Edit note (leave empty to delete):", current || "");
+      if (next === null) return; // cancel
+      if (!next) {
+        const del = await fetch(`/api/notes/${ev.id}`, { method: "DELETE" });
+        if (del.ok) fetchEvents(selectedPropertyId);
+      } else {
+        const upd = await fetch(`/api/notes/${ev.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: next }),
+        });
+        if (upd.ok) fetchEvents(selectedPropertyId);
+      }
+      return;
+    }
     if (confirm(`Unblock/delete event '${ev.title}'?`)) {
       const res = await fetch(`/api/events/${ev.id}`, { method: "DELETE" });
       if (res.ok) fetchEvents(selectedPropertyId);
@@ -206,15 +259,105 @@ export default function CalendarPage() {
 
   const filteredEvents = useMemo(() => {
     if (typeFilter === "all") return events;
-    return events.filter((ev: any) => (ev?.extendedProps?.source ?? "manual") === typeFilter);
+    if (typeFilter === "manual") {
+      // Show user-created items (manual blocks and notes)
+      return events.filter((ev: any) => (ev?.extendedProps?.source ?? "manual") !== "ics");
+    }
+    if (typeFilter === "notes") {
+      return events.filter((ev: any) => (ev?.extendedProps?.source ?? "manual") === "note");
+    }
+    // Bookings (iCal) only
+    return events.filter((ev: any) => (ev?.extendedProps?.source ?? "manual") === "ics");
   }, [events, typeFilter]);
 
   return (
     <div className="space-y-4">
+      {/* Selection modal for block vs note */}
+      {selectionOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSelectionOpen(false)}></div>
+          <div className="relative z-10 w-full max-w-md rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xl">
+            <div className="p-4 space-y-2">
+              <h3 className="text-lg font-semibold">Choose an action</h3>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {selectionAllDay ? "Selected date range" : "Selected time range"}: {new Date(selectionStartStr).toLocaleString()} {selectionEndStr ? `→ ${new Date(selectionEndStr).toLocaleString()}` : ""}
+              </p>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button
+                  className={`px-3 py-2 rounded-md border text-sm ${selectionAction === "block" ? "bg-gray-900 text-white" : "border-neutral-200 dark:border-neutral-800"}`}
+                  onClick={() => setSelectionAction("block")}
+                >
+                  Block dates
+                </button>
+                <button
+                  className={`px-3 py-2 rounded-md border text-sm ${selectionAction === "note" ? "bg-amber-500 text-white" : "border-neutral-200 dark:border-neutral-800"}`}
+                  onClick={() => setSelectionAction("note")}
+                >
+                  Add note
+                </button>
+              </div>
+              {selectionAction === "note" && (
+                <div className="mt-3 space-y-1">
+                  <label className="text-sm font-medium">Note (per-day)</label>
+                  <textarea
+                    className="w-full rounded-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                    value={selectionNoteText}
+                    onChange={(e) => setSelectionNoteText(e.target.value)}
+                    placeholder="e.g. Guest request, maintenance, pricing note"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Notes attach to the start date only for the selected property.</p>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2 p-3 border-t border-neutral-200 dark:border-neutral-800">
+              <button className="px-3 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm" onClick={() => setSelectionOpen(false)}>Cancel</button>
+              <button
+                className="px-3 py-1 rounded-md bg-gray-900 text-white text-sm disabled:opacity-50"
+                onClick={async () => {
+                  const propertyId = selectedPropertyId;
+                  if (!propertyId) { setSelectionOpen(false); return; }
+                  if (selectionAction === "block") {
+                    const payload = {
+                      title: "Blocked",
+                      start: selectionStartStr,
+                      end: selectionEndStr,
+                      allDay: selectionAllDay,
+                      propertyId,
+                    } as any;
+                    const res = await fetch("/api/events", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                    });
+                    setSelectionOpen(false);
+                    if (res.ok) fetchEvents(selectedPropertyId);
+                    try { calendarRef.current?.getApi().unselect(); } catch {}
+                  } else {
+                    const dateOnly = selectionStartStr.substring(0, 10);
+                    if (!selectionNoteText.trim()) return;
+                    const res = await fetch("/api/notes", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ propertyId, date: dateOnly, text: selectionNoteText.trim() }),
+                    });
+                    setSelectionOpen(false);
+                    if (res.ok) fetchEvents(selectedPropertyId);
+                    try { calendarRef.current?.getApi().unselect(); } catch {}
+                  }
+                }}
+                disabled={selectionAction === "note" && !selectionNoteText.trim()}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold">Calendar</h1>
-          <p className="text-xs text-gray-600 dark:text-gray-400">Imported bookings from your property iCals, plus your manual blocks.</p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">Imported bookings, your manual blocks, and per-day property notes.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Property dropdown */}
@@ -242,9 +385,21 @@ export default function CalendarPage() {
             <option value="all">All</option>
             <option value="ics">Bookings (iCal)</option>
             <option value="manual">Manual blocks</option>
+            <option value="notes">Notes only</option>
           </select>
 
-          <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 mr-2">{lastSyncedAt ? `Last sync: ${new Date(lastSyncedAt).toLocaleTimeString()}` : ""}</span>
+          {hasMounted && lastSyncedAt ? (
+            <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 mr-2">{`Last sync: ${new Date(lastSyncedAt).toLocaleTimeString()}`}</span>
+          ) : null}
+          {hasMounted ? (
+            <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 mr-2">{`Notes: ${lastNotesCount}`}</span>
+          ) : null}
+          {hasMounted && typeFilter === "notes" ? (
+            <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 mr-2">{`Showing ${filteredEvents.filter((e: any) => (e?.extendedProps?.source ?? "manual") === "note").length} notes`}</span>
+          ) : null}
+          {hasMounted && (notesError || eventsError) ? (
+            <span className="inline text-xs mr-2 px-2 py-1 rounded bg-red-100 text-red-800 border border-red-200">{notesError || eventsError}</span>
+          ) : null}
           <button
             className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors disabled:opacity-60"
             onClick={() => fetchEvents(selectedPropertyId)}
@@ -283,8 +438,14 @@ export default function CalendarPage() {
           eventChange={handleEventChange}
           eventClick={handleEventClick}
           events={filteredEvents}
+          eventOrder={(a: any, b: any) => {
+            const sa = (a.extendedProps?.source ?? "manual") as string;
+            const sb = (b.extendedProps?.source ?? "manual") as string;
+            const rank = (s: string) => (s === "note" ? 0 : s === "manual" ? 1 : s === "ics" ? 2 : 3);
+            return rank(sa) - rank(sb);
+          }}
           height="auto"
-          dayMaxEventRows={3}
+          dayMaxEventRows={5}
           displayEventTime={false}
           eventContent={(arg) => {
             const bg = (arg.event as any).backgroundColor || (arg.event.extendedProps as any)?.color || arg.backgroundColor;

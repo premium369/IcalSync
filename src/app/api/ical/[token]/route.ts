@@ -54,19 +54,10 @@ export async function GET(
     .order("start");
   if (eErr) return new NextResponse("Server error", { status: 500 });
 
-  // Fetch ICS from connected feeds for this property
-  let icsItems: any[] = [];
-  const feeds = (property as any).property_icals || [];
-  await Promise.all(
-    feeds.map(async (i: any) => {
-      try {
-        const cal = await ical.async.fromURL(i.url);
-        Object.values(cal).forEach((it: any) => { if (it.type === "VEVENT") icsItems.push({ feedUrl: i.url, item: it }); });
-      } catch (e) {
-        // ignore individual feed errors
-      }
-    })
-  );
+  // NOTE: For export feeds consumed by OTAs (Airbnb, Booking.com),
+  // we only export MANUAL blocks created in this app.
+  // Avoid re-exporting imported OTA bookings to prevent duplication/loops.
+  // If needed later, this can be made configurable per property.
 
   type ExportEvent = { uid: string; summary: string; start: Date; end?: Date | null; allDay?: boolean };
   const exportEvents: ExportEvent[] = [];
@@ -78,14 +69,7 @@ export async function GET(
     exportEvents.push({ uid: e.id, summary: e.title || "Blocked", start, end, allDay: !!e.all_day });
   });
 
-  // Map ics items
-  for (const { item } of icsItems) {
-    if (!item.start) continue;
-    const start: Date = item.start instanceof Date ? item.start : new Date(item.start);
-    const end: Date | null = item.end ? (item.end instanceof Date ? item.end : new Date(item.end)) : null;
-    const allDay = !!item.datetype?.includes?.("date");
-    exportEvents.push({ uid: item.uid || `${property.id}-${start.toISOString()}`, summary: item.summary || "Reserved", start, end, allDay });
-  }
+  // Do not include imported ICS items in export
 
   // Build ICS content
   const now = new Date();
@@ -107,16 +91,30 @@ export async function GET(
     const isAll = !!ev.allDay;
     if (isAll) {
       lines.push(`DTSTART;VALUE=DATE:${toIcsDateValue(ev.start)}`);
+      // DTEND for VALUE=DATE must be exclusive (next day)
       if (ev.end) {
-        // DTEND is exclusive for VALUE=DATE; if end has time at 00:00 of next day already, keep; else add 1 day
-        const endDate = new Date(Date.UTC(ev.end.getUTCFullYear(), ev.end.getUTCMonth(), ev.end.getUTCDate()));
-        lines.push(`DTEND;VALUE=DATE:${toIcsDateValue(endDate)}`);
+        const endDateExclusive = new Date(Date.UTC(ev.end.getUTCFullYear(), ev.end.getUTCMonth(), ev.end.getUTCDate()));
+        lines.push(`DTEND;VALUE=DATE:${toIcsDateValue(endDateExclusive)}`);
+      } else {
+        const nextDay = new Date(Date.UTC(ev.start.getUTCFullYear(), ev.start.getUTCMonth(), ev.start.getUTCDate() + 1));
+        lines.push(`DTEND;VALUE=DATE:${toIcsDateValue(nextDay)}`);
       }
     } else {
       lines.push(`DTSTART:${toIcsDate(ev.start)}`);
-      if (ev.end) lines.push(`DTEND:${toIcsDate(ev.end)}`);
+      if (ev.end) {
+        lines.push(`DTEND:${toIcsDate(ev.end)}`);
+      } else {
+        // Provide a minimal duration to ensure some OTAs treat it as blocking
+        const oneHourLater = new Date(ev.start.getTime() + 60 * 60 * 1000);
+        lines.push(`DTEND:${toIcsDate(oneHourLater)}`);
+      }
     }
     lines.push(foldLine(`SUMMARY:${escapeText(ev.summary || "Blocked")}`));
+    // Explicitly mark as confirmed and opaque so OTAs block availability
+    lines.push(`STATUS:CONFIRMED`);
+    lines.push(`TRANSP:OPAQUE`);
+    // Optional hint
+    lines.push(foldLine(`DESCRIPTION:${escapeText("Blocked via caldne")}`));
     lines.push("END:VEVENT");
     return lines.join("\r\n");
   });

@@ -85,11 +85,27 @@ create index if not exists idx_property_icals_property_id on public.property_ica
 create unique index if not exists uq_property_icals_property_url on public.property_icals(property_id, url);
 create unique index if not exists uq_properties_ical_token on public.properties(ical_token);
 
+-- Property notes schema
+create table if not exists public.property_notes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  property_id uuid not null references public.properties(id) on delete cascade,
+  note_date date not null,
+  text text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_property_notes_user_id on public.property_notes(user_id);
+create index if not exists idx_property_notes_property_id on public.property_notes(property_id);
+create unique index if not exists uq_property_notes_unique_per_day on public.property_notes(user_id, property_id, note_date);
+
 -- Enable RLS
 alter table public.properties enable row level security;
 alter table public.property_icals enable row level security;
 alter table public.events add column if not exists property_id uuid references public.properties(id) on delete set null;
 create index if not exists idx_events_property_id on public.events(property_id);
+alter table public.property_notes enable row level security;
 
 -- Properties policies (owner-only)
 DO $$
@@ -148,6 +164,51 @@ BEGIN
         select 1 from public.properties p
         where p.id = property_id and p.user_id = auth.uid()
       ));
+  END IF;
+END$$;
+
+-- Property notes policies (owner-only)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='property_notes' AND policyname='Users can view their notes'
+  ) THEN
+    CREATE POLICY "Users can view their notes"
+      ON public.property_notes FOR SELECT
+      USING (auth.uid() = user_id);
+  END IF;
+END$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='property_notes' AND policyname='Users can insert their notes'
+  ) THEN
+    CREATE POLICY "Users can insert their notes"
+      ON public.property_notes FOR INSERT
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='property_notes' AND policyname='Users can update their notes'
+  ) THEN
+    CREATE POLICY "Users can update their notes"
+      ON public.property_notes FOR UPDATE
+      USING (auth.uid() = user_id);
+  END IF;
+END$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='property_notes' AND policyname='Users can delete their notes'
+  ) THEN
+    CREATE POLICY "Users can delete their notes"
+      ON public.property_notes FOR DELETE
+      USING (auth.uid() = user_id);
   END IF;
 END$$;
 

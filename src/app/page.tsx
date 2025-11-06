@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { plansCatalog, SUPER_HOST_LIMIT } from "@/lib/plans";
 
 export default function Home() {
   return (
@@ -25,16 +26,16 @@ export default function Home() {
               href="/login"
               className="inline-flex items-center justify-center rounded-md bg-blue-600 px-5 py-2.5 text-white text-sm font-medium shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             >
-              Get started free
+              Start free trial
             </a>
             <a
-              href="#features"
+              href="#pricing"
               className="inline-flex items-center justify-center rounded-md border border-neutral-200 dark:border-neutral-800 px-5 py-2.5 text-sm font-medium hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
             >
-              See features
+              See pricing
             </a>
           </div>
-          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">No credit card required</p>
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">14-day free trial. No credit card required.</p>
         </div>
       </section>
 
@@ -91,63 +92,41 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section className="space-y-8">
+      <section id="pricing" className="space-y-8">
         <div className="text-center">
           <h2 className="text-2xl sm:text-3xl font-semibold">Fair pricing for every host</h2>
-          <p className="mt-2 text-gray-700 dark:text-gray-300">Start free and scale as your business grows.</p>
+          <p className="mt-2 text-gray-700 dark:text-gray-300">Start with a {SUPER_HOST_LIMIT}-property trial. Upgrade later. Dodo Payments coming soon.</p>
         </div>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Free */}
-          <div className="card-surface p-6">
-            <h3 className="text-lg font-semibold">Free</h3>
-            <p className="mt-1 text-gray-700 dark:text-gray-300">For getting started</p>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {plansCatalog.map((p) => (
+            <div key={p.id} className="card-surface p-6 flex flex-col">
+              <h3 className="text-lg font-semibold">{p.title}</h3>
+              <p className="mt-1 text-gray-700 dark:text-gray-300">{p.propertyLimitLabel}</p>
+              <div className="mt-4 flex items-end gap-1">
+                <span className="text-3xl font-bold">{p.price}</span>
+              </div>
+              <ul className="mt-4 space-y-2 text-sm text-gray-800 dark:text-gray-300">
+                {p.features.map((f) => (<li key={f}>• {f}</li>))}
+              </ul>
+              <a href="/login" className={`mt-6 inline-flex w-full items-center justify-center rounded-md ${p.id === 'basic' ? 'border border-neutral-200 dark:border-neutral-800' : 'bg-blue-600 text-white'} px-4 py-2 text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-600/90 transition-colors`}>
+                {p.cta}
+              </a>
+            </div>
+          ))}
+          {/* Custom */}
+          <div className="card-surface p-6 flex flex-col">
+            <h3 className="text-lg font-semibold">Custom</h3>
+            <p className="mt-1 text-gray-700 dark:text-gray-300">Tell us what you need</p>
             <div className="mt-4 flex items-end gap-1">
-              <span className="text-3xl font-bold">$0</span>
-              <span className="text-gray-500 dark:text-gray-400">/mo</span>
+              <span className="text-3xl font-bold">Contact</span>
             </div>
             <ul className="mt-4 space-y-2 text-sm text-gray-800 dark:text-gray-300">
-              <li>• 1 property</li>
-              <li>• Calendar sync</li>
-              <li>• Auto-block dates</li>
+              <li>• More than {SUPER_HOST_LIMIT} properties</li>
+              <li>• Dedicated support</li>
+              <li>• Integrations</li>
             </ul>
-            <a href="/login" className="mt-6 inline-flex w-full items-center justify-center rounded-md border border-neutral-200 dark:border-neutral-800 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors">
-              Get started
-            </a>
-          </div>
-
-          {/* Starter */}
-          <div className="card-surface p-6">
-            <h3 className="text-lg font-semibold">Starter</h3>
-            <p className="mt-1 text-gray-700 dark:text-gray-300">For growing hosts</p>
-            <div className="mt-4 flex items-end gap-1">
-              <span className="text-3xl font-bold">$9</span>
-              <span className="text-gray-500 dark:text-gray-400">/mo</span>
-            </div>
-            <ul className="mt-4 space-y-2 text-sm text-gray-800 dark:text-gray-300">
-              <li>• Up to 5 properties</li>
-              <li>• Priority sync</li>
-              <li>• Email support</li>
-            </ul>
-            <a href="/login" className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-              Choose Starter
-            </a>
-          </div>
-
-          {/* Pro */}
-          <div className="card-surface p-6">
-            <h3 className="text-lg font-semibold">Pro</h3>
-            <p className="mt-1 text-gray-700 dark:text-gray-300">For serious operators</p>
-            <div className="mt-4 flex items-end gap-1">
-              <span className="text-3xl font-bold">$19</span>
-              <span className="text-gray-500 dark:text-gray-400">/mo</span>
-            </div>
-            <ul className="mt-4 space-y-2 text-sm text-gray-800 dark:text-gray-300">
-              <li>• Unlimited properties</li>
-              <li>• Fastest sync</li>
-              <li>• Priority support</li>
-            </ul>
-            <a href="/login" className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-              Choose Pro
+            <a href="/dashboard/settings" className="mt-6 inline-flex w-full items-center justify-center rounded-md border border-neutral-200 dark:border-neutral-800 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors">
+              Contact us
             </a>
           </div>
         </div>
@@ -162,7 +141,7 @@ export default function Home() {
             href="/login"
             className="mt-6 inline-flex items-center justify-center rounded-md bg-blue-600 px-5 py-2.5 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
           >
-            Create your free account
+            Start your free trial
           </a>
         </div>
       </section>

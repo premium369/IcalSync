@@ -200,19 +200,20 @@ html[data-theme="light"] .supabase-auth > div {
   box-shadow: none !important;
 }
 /* Headings and intro text set to white per request */
+/* Headings and intro text use dark foreground in light mode */
 html[data-theme="light"] .supabase-auth h1,
 html[data-theme="light"] .supabase-auth h2,
 html[data-theme="light"] .supabase-auth h3,
 html[data-theme="light"] .supabase-auth p[role="note"],
 html[data-theme="light"] .supabase-auth p.intro,
 html[data-theme="light"] .supabase-auth .intro-text {
-  color: #ffffff !important;
+  color: #111827 !important; /* gray-900 */
 }
-/* Labels white */
+/* Labels readable in light mode */
 html[data-theme="light"] .supabase-auth label,
 html[data-theme="light"] .supabase-auth [class*="label"],
 html[data-theme="light"] .supabase-auth [role="heading"] {
-  color: #ffffff !important;
+  color: #374151 !important; /* gray-700 */
 }
 /* Inputs */
 html[data-theme="light"] .supabase-auth input[type="email"],
@@ -238,6 +239,23 @@ html[data-theme="light"] .supabase-auth [class*="button"] {
   color: #ffffff !important;
   border-color: transparent !important;
   box-shadow: none !important;
+}
+/* Modern input styling across themes */
+.supabase-auth input {
+  border-radius: 8px !important; /* rounded edges */
+  padding: 10px 12px !important; /* comfortable padding */
+}
+.supabase-auth input::placeholder {
+  color: #9ca3af !important; /* gray-400 */
+}
+html[data-theme="dark"] .supabase-auth input::placeholder {
+  color: #6b7280 !important; /* gray-500 for dark */
+}
+/* Polished focus state */
+.supabase-auth input:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.6) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12) !important;
 }
 html[data-theme="light"] .supabase-auth button:hover,
 html[data-theme="light"] .supabase-auth button[type="submit"]:hover,
