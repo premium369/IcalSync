@@ -15,11 +15,11 @@ export default function Home() {
             <span className="text-2xl">🗓️</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
-            Sync your Airbnb & Booking.com calendars automatically
+            Ical Sync — Best calendar manager for your property
           </h1>
           <p className="mt-4 text-lg text-gray-700 dark:text-gray-300">
-            Avoid double-bookings and manual updates. Connect your listings and let
-            Ical Sync keep your availability in perfect sync across platforms.
+            Avoid double-bookings and manual updates. Sync Airbnb/Booking.com calendars,
+            block dates, and export iCal feeds effortlessly.
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <a

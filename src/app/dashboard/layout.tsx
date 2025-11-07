@@ -53,7 +53,7 @@ function DesktopNav({ currentHref }: { currentHref: string }) {
           key={p.href}
           href={p.href}
           className={
-            "block rounded px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors " +
+            "block rounded px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform " +
             (p.href === currentHref ? "bg-blue-600/10 text-blue-700 dark:text-blue-300" : "")
           }
         >
@@ -61,7 +61,7 @@ function DesktopNav({ currentHref }: { currentHref: string }) {
         </Link>
       ))}
       <form action="/auth/signout" method="post">
-        <button type="submit" className="w-full text-left rounded px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors">Logout</button>
+        <button type="submit" className="w-full text-left rounded px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform">Logout</button>
       </form>
     </nav>
   );
@@ -106,7 +106,7 @@ function MobileDropdown() {
         aria-expanded={open}
         aria-controls="dashboard-mobile-dropdown"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-md bg-neutral-100 dark:bg-neutral-900/60 px-3 py-2 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+        className="flex w-full items-center justify-between rounded-md bg-neutral-100 dark:bg-neutral-900/60 px-3 py-2 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors active:scale-95 transition-transform"
       >
         <span className="truncate">{current.label}</span>
         <svg className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -135,7 +135,7 @@ function MobileDropdown() {
                     if (pathname !== item.href) router.push(item.href);
                   }}
                   className={
-                    "flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors " +
+                    "flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform " +
                     (active ? "bg-blue-600/10 text-blue-700 dark:text-blue-300" : "")
                   }
                 >
@@ -154,7 +154,7 @@ function MobileDropdown() {
               <button
                 type="submit"
                 onClick={() => setOpen(false)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform"
                 role="menuitem"
               >
                 Logout

@@ -79,7 +79,7 @@ export default function BillingInner() {
               {p.features.map((f) => (<li key={f}>• {f}</li>))}
             </ul>
             <button
-              className="mt-4 w-full rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700"
+              className="mt-4 w-full rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 active:scale-95 transition-transform"
               onClick={() => setDesired(p.id as any)}
             >{p.cta}</button>
           </div>
@@ -95,7 +95,7 @@ export default function BillingInner() {
             <li>• Integrations</li>
           </ul>
           <button
-            className="mt-4 w-full rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800"
+            className="mt-4 w-full rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform"
             onClick={() => setDesired("custom")}
           >Contact us</button>
         </div>
@@ -138,7 +138,7 @@ export default function BillingInner() {
               <label className="text-sm">Message (optional)</label>
               <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm" placeholder="Tell us about your requirements"/>
             </div>
-            <button disabled={submitting} className="rounded-md bg-blue-600 text-white px-4 py-2 text-sm hover:bg-blue-700 disabled:opacity-60">{submitting ? "Sending…" : "Send request"}</button>
+            <button disabled={submitting} className="rounded-md bg-blue-600 text-white px-4 py-2 text-sm hover:bg-blue-700 disabled:opacity-60 active:scale-95 transition-transform">{submitting ? "Sending…" : "Send request"}</button>
           </>
         )}
       </form>

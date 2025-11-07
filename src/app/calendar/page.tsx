@@ -30,6 +30,7 @@ export default function CalendarPage() {
   const [selectionStartStr, setSelectionStartStr] = useState<string>("");
   const [selectionEndStr, setSelectionEndStr] = useState<string>("");
   const [selectionAllDay, setSelectionAllDay] = useState<boolean>(true);
+  const [selectionSaving, setSelectionSaving] = useState<boolean>(false);
 
   const fetchEvents = async (propertyId?: string | null) => {
     setLoading(true);
@@ -142,11 +143,25 @@ export default function CalendarPage() {
     return () => clearInterval(interval);
   }, [selectedPropertyId]);
 
-  const overlaps = (aStart: Date, aEnd: Date | null, bStart: Date, bEnd: Date | null) => {
-    const aS = aStart.getTime();
-    const aE = (aEnd ?? aStart).getTime();
-    const bS = bStart.getTime();
-    const bE = (bEnd ?? bStart).getTime();
+  const startOfDay = (d: Date) => {
+    const nd = new Date(d);
+    nd.setHours(0, 0, 0, 0);
+    return nd;
+  };
+  // Overlap check that respects all-day exclusive end semantics
+  const overlaps = (
+    aStart: Date,
+    aEnd: Date | null,
+    aAllDay: boolean,
+    bStart: Date,
+    bEnd: Date | null,
+    bAllDay: boolean
+  ) => {
+    const aS = (aAllDay ? startOfDay(aStart) : aStart).getTime();
+    const aE = (aAllDay ? startOfDay(aEnd ?? aStart) : (aEnd ?? aStart)).getTime();
+    const bS = (bAllDay ? startOfDay(bStart) : bStart).getTime();
+    const bE = (bAllDay ? startOfDay(bEnd ?? bStart) : (bEnd ?? bStart)).getTime();
+    // With exclusive end for all-day, adjacent ranges (e.g., 8th vs 9th) should NOT overlap
     return aS < bE && bS < aE;
   };
   
@@ -163,13 +178,15 @@ export default function CalendarPage() {
     }
 
     // prevent creating manual blocks overlapping ICS events
+    const isAllDaySelection = !!selectInfo.allDay;
     const hasIcsOverlap = events.some((ev) => {
       // @ts-ignore
       const src = ev.extendedProps?.source;
       if (src !== "ics") return false;
       const evStart = new Date(ev.start);
       const evEnd = ev.end ? new Date(ev.end) : null;
-      return overlaps(start, end, evStart, evEnd);
+      const evAllDay = !!(ev as any).allDay;
+      return overlaps(start, end, isAllDaySelection, evStart, evEnd, evAllDay);
     });
     if (hasIcsOverlap) {
       alert("Selected range overlaps imported OTA bookings. You can’t block over an existing OTA booking.");
@@ -311,10 +328,12 @@ export default function CalendarPage() {
               )}
             </div>
             <div className="flex items-center justify-end gap-2 p-3 border-t border-neutral-200 dark:border-neutral-800">
-              <button className="px-3 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm" onClick={() => setSelectionOpen(false)}>Cancel</button>
+              <button className="px-3 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm active:scale-95 transition-transform" onClick={() => setSelectionOpen(false)}>Cancel</button>
               <button
-                className="px-3 py-1 rounded-md bg-gray-900 text-white text-sm disabled:opacity-50"
+                className="px-3 py-1 rounded-md bg-gray-900 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
                 onClick={async () => {
+                  if (selectionSaving) return;
+                  setSelectionSaving(true);
                   const propertyId = selectedPropertyId;
                   if (!propertyId) { setSelectionOpen(false); return; }
                   if (selectionAction === "block") {
@@ -345,10 +364,11 @@ export default function CalendarPage() {
                     if (res.ok) fetchEvents(selectedPropertyId);
                     try { calendarRef.current?.getApi().unselect(); } catch {}
                   }
+                  setSelectionSaving(false);
                 }}
-                disabled={selectionAction === "note" && !selectionNoteText.trim()}
+                disabled={selectionSaving || (selectionAction === "note" && !selectionNoteText.trim())}
               >
-                Continue
+                {selectionSaving ? "Saving..." : "Continue"}
               </button>
             </div>
           </div>
@@ -401,7 +421,7 @@ export default function CalendarPage() {
             <span className="inline text-xs mr-2 px-2 py-1 rounded bg-red-100 text-red-800 border border-red-200">{notesError || eventsError}</span>
           ) : null}
           <button
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={() => fetchEvents(selectedPropertyId)}
             disabled={loading}
             title="Refresh events"
@@ -409,13 +429,13 @@ export default function CalendarPage() {
             {loading ? (<><Spinner className="h-4 w-4" /> <span>Refreshing</span></>) : "Refresh"}
           </button>
           <button
-            className="px-2 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+            className="px-2 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform"
             onClick={() => calendarRef.current?.getApi().today()}
           >
             Today
           </button>
           <button
-            className="px-3 py-1 rounded-md bg-gray-900 text-white text-sm hover:bg-black transition-colors"
+            className="px-3 py-1 rounded-md bg-gray-900 text-white text-sm hover:bg-black transition-colors active:scale-95 transition-transform"
             onClick={onToggleView}
           >
             {view === "dayGridMonth" ? "Weekly" : "Monthly"}
