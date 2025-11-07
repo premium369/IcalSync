@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import ical from "node-ical";
 import { createServiceClient } from "@/lib/supabase-server";
+import crypto from "crypto";
+
+export const dynamic = "force-dynamic";
 
 function toIcsDate(dt: Date) {
   const y = dt.getUTCFullYear();
@@ -81,7 +84,8 @@ export async function GET(
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(property.name)} Availability`,
     "X-WR-TIMEZONE:UTC",
-    "X-PUBLISHED-TTL:PT10M",
+    // Hint to consumers that updates may be published frequently
+    "X-PUBLISHED-TTL:PT5M",
   ];
 
   const eventsIcs: string[] = exportEvents.map((ev) => {
@@ -91,12 +95,24 @@ export async function GET(
     const isAll = !!ev.allDay;
     if (isAll) {
       lines.push(`DTSTART;VALUE=DATE:${toIcsDateValue(ev.start)}`);
-      // DTEND for VALUE=DATE must be exclusive (next day)
+      // DTEND for VALUE=DATE must be exclusive: one day AFTER the last blocked day
       if (ev.end) {
-        const endDateExclusive = new Date(Date.UTC(ev.end.getUTCFullYear(), ev.end.getUTCMonth(), ev.end.getUTCDate()));
+        const endDateExclusive = new Date(
+          Date.UTC(
+            ev.end.getUTCFullYear(),
+            ev.end.getUTCMonth(),
+            ev.end.getUTCDate() + 1
+          )
+        );
         lines.push(`DTEND;VALUE=DATE:${toIcsDateValue(endDateExclusive)}`);
       } else {
-        const nextDay = new Date(Date.UTC(ev.start.getUTCFullYear(), ev.start.getUTCMonth(), ev.start.getUTCDate() + 1));
+        const nextDay = new Date(
+          Date.UTC(
+            ev.start.getUTCFullYear(),
+            ev.start.getUTCMonth(),
+            ev.start.getUTCDate() + 1
+          )
+        );
         lines.push(`DTEND;VALUE=DATE:${toIcsDateValue(nextDay)}`);
       }
     } else {
@@ -120,12 +136,18 @@ export async function GET(
   });
 
   const body = header.concat(eventsIcs).concat(["END:VCALENDAR"]).join("\r\n") + "\r\n";
+  const etag = crypto.createHash("sha256").update(body).digest("hex");
+  const lastModified = new Date().toUTCString();
 
   return new NextResponse(body, {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Cache-Control": "public, max-age=300, s-maxage=300",
+      // Disable caching to ensure OTAs always fetch the freshest data
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      "Pragma": "no-cache",
+      "ETag": etag,
+      "Last-Modified": lastModified,
       "Content-Disposition": `attachment; filename=\"${property.name.replace(/[^a-z0-9_-]+/gi, "-")}-availability.ics\"`,
     },
   });
