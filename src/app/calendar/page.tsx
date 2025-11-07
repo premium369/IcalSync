@@ -359,8 +359,8 @@ export default function CalendarPage() {
                   if (selectionAction === "block") {
                     const payload = {
                       title: "Blocked",
-                      start: selectionStartStr,
-                      end: selectionEndStr,
+                      start: selectionAllDay ? selectionStartStr.substring(0, 10) : selectionStartStr,
+                      end: selectionAllDay ? (selectionEndStr ? selectionEndStr.substring(0, 10) : undefined) : selectionEndStr,
                       allDay: selectionAllDay,
                       propertyId,
                     } as any;
@@ -469,6 +469,7 @@ export default function CalendarPage() {
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           headerToolbar={{ left: "prev,next", center: "title", right: "" }}
           initialView="dayGridMonth"
+          timeZone="UTC"
           selectable
           selectMirror
           selectLongPressDelay={250}
