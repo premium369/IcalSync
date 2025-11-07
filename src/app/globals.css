@@ -272,6 +272,16 @@ html[data-theme="light"] .supabase-auth [class*="button"]:active {
   background-color: #1d4ed8 !important; /* blue-700 */
   color: #ffffff !important;
 }
+/* Tactile pressed feedback for Supabase Auth UI buttons */
+.supabase-auth button:active,
+.supabase-auth button[type="submit"]:active,
+.supabase-auth [role="button"]:active,
+.supabase-auth .sbui-btn:active,
+.supabase-auth [class*="Button"]:active,
+.supabase-auth [class*="button"]:active {
+  transform: scale(0.98);
+  transition: transform 100ms ease;
+}
 html[data-theme="light"] .supabase-auth button:focus-visible,
 html[data-theme="light"] .supabase-auth button[type="submit"]:focus-visible,
 html[data-theme="light"] .supabase-auth [role="button"]:focus-visible,

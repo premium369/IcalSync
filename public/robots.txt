@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Optional: update to your canonical domain if different
+Sitemap: https://icalsync.vercel.app/sitemap.xml

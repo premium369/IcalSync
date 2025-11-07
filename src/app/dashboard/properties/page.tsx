@@ -34,6 +34,7 @@ export default function PropertiesPage() {
   const [rotatingId, setRotatingId] = useState<string | null>(null);
 
   const origin = useMemo(() => (typeof window !== "undefined" ? window.location.origin : ""), []);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   async function copyToClipboard(text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -254,14 +255,14 @@ export default function PropertiesPage() {
                             value={val}
                             onChange={(e) => setEditIcals((arr) => arr.map((v, i) => i === idx ? e.target.value : v))}
                           />
-                          <button type="button" onClick={() => setEditIcals((arr) => arr.filter((_, i) => i !== idx))} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700">Remove</button>
+                          <button type="button" onClick={() => setEditIcals((arr) => arr.filter((_, i) => i !== idx))} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700 active:scale-95 transition-transform">Remove</button>
                         </div>
                       ))}
                     </div>
                     {editError && <p className="text-sm text-red-600">{editError}</p>}
                     <div className="flex gap-2">
-                      <button onClick={() => saveEdit(p.id)} disabled={editSaving} className="px-3 py-2 rounded bg-green-600 text-white disabled:opacity-50">{editSaving ? "Saving..." : "Save"}</button>
-                      <button onClick={cancelEdit} className="px-3 py-2 rounded border border-gray-300 dark:border-gray-700">Cancel</button>
+                      <button onClick={() => saveEdit(p.id)} disabled={editSaving} className="px-3 py-2 rounded bg-green-600 text-white disabled:opacity-50 active:scale-95 transition-transform">{editSaving ? "Saving..." : "Save"}</button>
+                      <button onClick={cancelEdit} className="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 active:scale-95 transition-transform">Cancel</button>
                     </div>
                   </div>
                 ) : (
@@ -285,15 +286,26 @@ export default function PropertiesPage() {
                               value={`${origin}/api/ical/${p.icalToken}`}
                               className="flex-1 overflow-hidden text-ellipsis rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs"
                             />
-                            <button type="button" onClick={() => copyToClipboard(`${origin}/api/ical/${p.icalToken}`)} className="text-xs px-2 py-1 rounded bg-gray-800 text-white">Copy</button>
-                            <button type="button" onClick={() => rotateIcalToken(p.id)} disabled={rotatingId === p.id} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50">{rotatingId === p.id ? "Rotating..." : "Rotate link"}</button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await copyToClipboard(`${origin}/api/ical/${p.icalToken}`);
+                                setCopiedId(p.id);
+                                setTimeout(() => setCopiedId(null), 1500);
+                              }}
+                              className="text-xs px-2 py-1 rounded bg-gray-800 text-white active:scale-95 transition-transform"
+                              aria-live="polite"
+                            >
+                              {copiedId === p.id ? "Copied!" : "Copy"}
+                            </button>
+                            <button type="button" onClick={() => rotateIcalToken(p.id)} disabled={rotatingId === p.id} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform">{rotatingId === p.id ? "Rotating..." : "Rotate link"}</button>
                           </div>
                         </div>
                       ) : null}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => startEdit(p)} className="px-3 py-2 rounded border border-gray-300 dark:border-gray-700">Edit</button>
-                      <button onClick={() => deleteItem(p.id)} className="px-3 py-2 rounded bg-red-600 text-white">Delete</button>
+                      <button onClick={() => startEdit(p)} className="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 active:scale-95 transition-transform">Edit</button>
+                      <button onClick={() => deleteItem(p.id)} className="px-3 py-2 rounded bg-red-600 text-white active:scale-95 transition-transform">Delete</button>
                     </div>
                   </div>
                 )}

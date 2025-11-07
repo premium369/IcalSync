@@ -7,11 +7,45 @@ import ThemeToggle from "@/components/ThemeToggle";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "Ical Sync",
-  description: "Sync calendars effortlessly",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  title: {
+    default: "Ical Sync — Best calendar manager for your property",
+    template: "%s • Ical Sync",
+  },
+  description: "Ical Sync: the best calendar manager for your property. Sync Airbnb/Booking.com calendars, block dates, and export iCal feeds effortlessly.",
+  openGraph: {
+    title: "Ical Sync — Best calendar manager for your property",
+    description: "Ical Sync: the best calendar manager for your property. Sync Airbnb/Booking.com calendars, block dates, and export iCal feeds effortlessly.",
+    url: "/",
+    siteName: "Ical Sync",
+    images: [
+      {
+        url: "/vercel.svg",
+        width: 1200,
+        height: 630,
+        alt: "Ical Sync",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ical Sync — Best calendar manager for your property",
+    description: "Ical Sync: the best calendar manager for your property. Sync Airbnb/Booking.com calendars, block dates, and export iCal feeds effortlessly.",
+    images: ["/vercel.svg"],
+  },
+  icons: {
+    icon: "/favicon.ico",
+  },
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0b0f19" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  ],
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
@@ -26,7 +60,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/" className="font-semibold">Ical Sync</Link>
             <nav className="flex items-center gap-4 text-sm">
               <ThemeToggle />
-              <Link href="/login" className="rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-neutral-800">Login</Link>
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <Link href="/dashboard" className="rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform">Dashboard</Link>
+                  <form action="/auth/signout" method="post">
+                    <button type="submit" className="rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform">Logout</button>
+                  </form>
+                </div>
+              ) : (
+                <Link href="/login" className="rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform">Login</Link>
+              )}
             </nav>
           </div>
         </header>
@@ -36,7 +79,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </ToastProvider>
         </main>
         <footer className="border-t border-neutral-200 dark:border-neutral-800 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>© {new Date().getFullYear()} Ical Sync</p>
+          <p>© {new Date().getFullYear()} Ical Sync · 
+            <a
+              href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@icalsync.app"}`}
+              className="underline hover:text-gray-700 dark:hover:text-gray-200"
+            >
+              Support
+            </a>
+          </p>
         </footer>
       </body>
     </html>

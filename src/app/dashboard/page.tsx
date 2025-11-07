@@ -114,12 +114,12 @@ export default function DashboardHomePage() {
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-500 dark:text-gray-400">{lastUpdated ? `Updated ${lastUpdated}` : (loading ? "Updating…" : "")}</span>
-          <button onClick={fetchStats} className="px-3 py-1.5 rounded-md border border-neutral-200 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-800">Refresh</button>
+          <button onClick={fetchStats} className="px-3 py-1.5 rounded-md border border-neutral-200 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform">Refresh</button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link href="/dashboard/properties" className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <Link href="/dashboard/properties" className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 active:scale-95 transition-transform">
           <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Properties</div>
           <div className="mt-2 flex items-end justify-between">
             <div className="text-3xl font-semibold">{loading ? "—" : propertiesCount}</div>
@@ -127,7 +127,7 @@ export default function DashboardHomePage() {
           </div>
         </Link>
 
-        <Link href="/calendar?focus=today" className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <Link href="/calendar?focus=today" className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 active:scale-95 transition-transform">
           <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Bookings today</div>
           <div className="mt-2 flex items-end justify-between">
             <div className="text-3xl font-semibold">{loading ? "—" : bookingsToday}</div>
@@ -142,7 +142,7 @@ export default function DashboardHomePage() {
           </div>
         </Link>
 
-        <Link href="/calendar?focus=today&type=manual" className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <Link href="/calendar?focus=today&type=manual" className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 active:scale-95 transition-transform">
           <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Manual blocks today</div>
           <div className="mt-2 flex items-end justify-between">
             <div className="text-3xl font-semibold">{loading ? "—" : manualBlocksToday}</div>
@@ -151,7 +151,7 @@ export default function DashboardHomePage() {
           <div className="mt-1"><DeltaChip value={manualDelta} /></div>
         </Link>
 
-        <Link href="/calendar?focus=today" className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <Link href="/calendar?focus=today" className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 active:scale-95 transition-transform">
           <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Properties affected today</div>
           <div className="mt-2 flex items-end justify-between">
             <div className="text-3xl font-semibold">{loading ? "—" : propertiesAffectedToday}</div>

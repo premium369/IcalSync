@@ -95,9 +95,9 @@ export default function AdminUpgradeRequestsPage() {
                   <td className="px-3 py-2"><Badge status={r.status} /></td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
-                      <button className="rounded-md bg-green-600 text-white px-2 py-1 hover:bg-green-700" onClick={() => act(r.id, "approve", r.desired_plan === "custom" ? "super_host" : r.desired_plan)}>Approve</button>
-                      <button className="rounded-md bg-red-600 text-white px-2 py-1 hover:bg-red-700" onClick={() => act(r.id, "deny")}>Deny</button>
-                      <button className="rounded-md border border-neutral-300 dark:border-neutral-700 px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => act(r.id, "review")}>Mark Reviewed</button>
+                      <button className="rounded-md bg-green-600 text-white px-2 py-1 hover:bg-green-700 active:scale-95 transition-transform" onClick={() => act(r.id, "approve", r.desired_plan === "custom" ? "super_host" : r.desired_plan)}>Approve</button>
+                      <button className="rounded-md bg-red-600 text-white px-2 py-1 hover:bg-red-700 active:scale-95 transition-transform" onClick={() => act(r.id, "deny")}>Deny</button>
+                      <button className="rounded-md border border-neutral-300 dark:border-neutral-700 px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-95 transition-transform" onClick={() => act(r.id, "review")}>Mark Reviewed</button>
                     </div>
                   </td>
                 </tr>

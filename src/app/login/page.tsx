@@ -92,6 +92,17 @@ function LoginPageInner() {
             } as any
           }
         />
+
+        <div className="mt-4">
+          <form action="/auth/demo-login" method="post">
+            <button
+              type="submit"
+              className="w-full rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform"
+            >
+              Try Demo
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
