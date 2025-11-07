@@ -95,13 +95,13 @@ export async function GET(
     const isAll = !!ev.allDay;
     if (isAll) {
       lines.push(`DTSTART;VALUE=DATE:${toIcsDateValue(ev.start)}`);
-      // DTEND for VALUE=DATE must be exclusive: one day AFTER the last blocked day
+      // DTEND for VALUE=DATE is exclusive. Our stored end from the UI is already exclusive.
       if (ev.end) {
         const endDateExclusive = new Date(
           Date.UTC(
             ev.end.getUTCFullYear(),
             ev.end.getUTCMonth(),
-            ev.end.getUTCDate() + 1
+            ev.end.getUTCDate()
           )
         );
         lines.push(`DTEND;VALUE=DATE:${toIcsDateValue(endDateExclusive)}`);

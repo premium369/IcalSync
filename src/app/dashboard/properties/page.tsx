@@ -300,6 +300,9 @@ export default function PropertiesPage() {
                             </button>
                             <button type="button" onClick={() => rotateIcalToken(p.id)} disabled={rotatingId === p.id} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform">{rotatingId === p.id ? "Rotating..." : "Rotate link"}</button>
                           </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 max-w-xl">
+                            Tip: OTAs like Booking.com and Airbnb usually poll iCal feeds every 30–60 minutes. For immediate updates, use the manual refresh in the OTA’s extranet. This export includes only your manual blocks to avoid duplicate bookings.
+                          </p>
                         </div>
                       ) : null}
                     </div>

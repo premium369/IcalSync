@@ -226,6 +226,26 @@ export default function CalendarPage() {
     if (!res.ok) await fetchEvents(selectedPropertyId);
   };
 
+  // Enable tap-to-select on mobile: single-day selection via date click
+  const handleDateClick = (arg: any) => {
+    const calendarApi = calendarRef.current?.getApi();
+    if (!selectedPropertyId) {
+      alert("Please select a property first to block dates for.");
+      calendarApi?.unselect();
+      return;
+    }
+    // Prepare selection modal with a single all-day day
+    const startIso = arg.date instanceof Date ? arg.date.toISOString() : new Date(arg.date).toISOString();
+    const nextDay = new Date(new Date(startIso).getTime() + 24 * 60 * 60 * 1000);
+    const endIso = nextDay.toISOString();
+    setSelectionStartStr(startIso);
+    setSelectionEndStr(endIso);
+    setSelectionAllDay(true);
+    setSelectionAction("block");
+    setSelectionNoteText("");
+    setSelectionOpen(true);
+  };
+
   const handleEventClick = async (clickInfo: any) => {
     const ev = clickInfo.event;
     const src = ev.extendedProps?.source;
@@ -451,10 +471,12 @@ export default function CalendarPage() {
           initialView="dayGridMonth"
           selectable
           selectMirror
+          selectLongPressDelay={250}
           editable
           eventStartEditable
           eventDurationEditable
           select={handleDateSelect}
+          dateClick={handleDateClick}
           eventChange={handleEventChange}
           eventClick={handleEventClick}
           events={filteredEvents}
