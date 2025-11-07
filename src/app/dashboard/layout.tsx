@@ -35,8 +35,8 @@ function useAdmin(): { isAdmin: boolean } {
         const j = await res.json();
         const email: string | undefined = j?.user?.email;
         const raw = process.env.NEXT_PUBLIC_ADMIN_EMAILS || "";
-        const admins = raw.split(",").map((s) => s.trim()).filter(Boolean);
-        setIsAdmin(!!email && admins.includes(email));
+        const admins = raw.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+        setIsAdmin(!!email && admins.includes(email.toLowerCase()));
       } catch {}
     })();
   }, []);
