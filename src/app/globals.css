@@ -186,6 +186,20 @@ html[data-theme="light"] :focus-visible {
   outline-color: rgba(37, 99, 235, 0.7);
 }
 
+/* Playful marquee for benefits */
+.marquee { overflow: hidden; }
+.marquee-track {
+  display: inline-flex;
+  gap: 1rem;
+  min-width: max-content;
+  white-space: nowrap;
+  animation: marquee 22s linear infinite;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 /* --- Supabase Auth UI (appearance.className = "supabase-auth") light-mode fixes --- */
 html[data-theme="light"] .supabase-auth {
   color: #111827;

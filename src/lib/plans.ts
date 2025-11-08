@@ -9,8 +9,8 @@ export type UserPlanRow = {
 };
 
 export const TRIAL_DAYS = 14;
-export const BASIC_LIMIT = 1;
-export const SUPER_HOST_LIMIT = 5;
+export const BASIC_LIMIT = 3;
+export const SUPER_HOST_LIMIT = 9;
 export const BUSINESS_LIMIT: number | null = null; // null => unlimited
 export const TRIAL_LIMIT = SUPER_HOST_LIMIT; // During trial, allow Super Host limits
 
@@ -78,9 +78,9 @@ export const plansCatalog: Array<{
 }> = [
   {
     id: "basic",
-    title: "Basic",
-    price: "$0/mo",
-    propertyLimitLabel: "Up to 1 property",
+    title: "Starter",
+    price: "$9/mo",
+    propertyLimitLabel: "Up to 3 properties",
     features: [
       "Calendar sync",
       "Auto-block dates",
@@ -92,7 +92,7 @@ export const plansCatalog: Array<{
   {
     id: "super_host",
     title: "Super Host",
-    price: "$—/mo",
+    price: "$15/mo",
     propertyLimitLabel: `Up to ${SUPER_HOST_LIMIT} properties`,
     features: [
       `Up to ${SUPER_HOST_LIMIT} properties`,
