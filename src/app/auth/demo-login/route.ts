@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 
-export async function POST() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+export async function POST(req: NextRequest) {
+  // Use deployment origin from the incoming request, with optional env override
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin;
   const email = process.env.DEMO_EMAIL;
   const password = process.env.DEMO_PASSWORD;
   if (!email || !password) {
