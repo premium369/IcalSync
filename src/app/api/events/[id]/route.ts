@@ -25,10 +25,20 @@ export async function PATCH(
 
   const { id } = await params;
 
+  function isDateOnly(s?: string | null) {
+    return !!s && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s);
+  }
+  function toMidnightUtcIso(dateOnly: string) {
+    const y = Number(dateOnly.slice(0, 4));
+    const m = Number(dateOnly.slice(5, 7)) - 1;
+    const d = Number(dateOnly.slice(8, 10));
+    return new Date(Date.UTC(y, m, d, 0, 0, 0, 0)).toISOString();
+  }
+
   const updates: any = {};
   if (body.title !== undefined) updates.title = body.title;
-  if (body.start !== undefined) updates.start = body.start;
-  if (body.end !== undefined) updates.end = body.end;
+  if (body.start !== undefined) updates.start = (body.allDay && isDateOnly(body.start)) ? toMidnightUtcIso(body.start) : body.start;
+  if (body.end !== undefined) updates.end = (body.allDay && isDateOnly(body.end)) ? toMidnightUtcIso(body.end) : body.end;
   if (body.allDay !== undefined) updates.all_day = body.allDay;
 
   const { data, error } = await supabase
@@ -41,11 +51,14 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  function toDateOnly(iso: string) {
+    try { return new Date(iso).toISOString().slice(0, 10); } catch { return iso; }
+  }
   return NextResponse.json({
     id: data.id,
     title: data.title,
-    start: data.start,
-    end: data.end ?? undefined,
+    start: data.all_day ? toDateOnly(data.start) : data.start,
+    end: data.all_day ? (data.end ? toDateOnly(data.end) : undefined) : (data.end ?? undefined),
     allDay: data.all_day ?? undefined,
   });
 }

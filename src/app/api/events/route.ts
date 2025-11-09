@@ -29,6 +29,21 @@ const OTA_COLORS: Record<string, string> = {
   manual: "#6B7280",
 };
 
+function isDateOnly(s?: string | null) {
+  return !!s && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s);
+}
+function toMidnightUtcIso(dateOnly: string) {
+  // Convert YYYY-MM-DD to midnight UTC ISO
+  const y = Number(dateOnly.slice(0, 4));
+  const m = Number(dateOnly.slice(5, 7)) - 1;
+  const d = Number(dateOnly.slice(8, 10));
+  return new Date(Date.UTC(y, m, d, 0, 0, 0, 0)).toISOString();
+}
+function toDateOnly(iso: string) {
+  // Take stored timestamptz and present as YYYY-MM-DD in UTC
+  try { return new Date(iso).toISOString().slice(0, 10); } catch { return iso; }
+}
+
 function detectOta(summary: string | undefined, uid: string | undefined, url?: string) {
   const text = `${summary || ""} ${uid || ""} ${url || ""}`.toLowerCase();
   if (text.includes("airbnb")) return "airbnb";
@@ -112,8 +127,8 @@ export async function GET(req: NextRequest) {
   const manualEvents = rows.map((e) => ({
     id: e.id,
     title: e.title,
-    start: e.start,
-    end: e.end ?? undefined,
+    start: e.all_day ? toDateOnly(e.start) : e.start,
+    end: e.all_day ? (e.end ? toDateOnly(e.end) : undefined) : (e.end ?? undefined),
     allDay: e.all_day ?? undefined,
     color: OTA_COLORS["manual"],
     extendedProps: { source: "manual", propertyId: e.property_id ?? null },
@@ -142,13 +157,20 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const payload = parsed.data;
+  // Normalize all-day date-only inputs to midnight UTC
+  const startValue = payload.allDay && isDateOnly(payload.start)
+    ? toMidnightUtcIso(payload.start)
+    : payload.start;
+  const endValue = payload.allDay && isDateOnly(payload.end || undefined)
+    ? toMidnightUtcIso(payload.end as string)
+    : (payload.end ?? null);
   const { data, error } = await supabase
     .from("events")
     .insert({
       user_id: user.id,
       title: payload.title,
-      start: payload.start,
-      end: payload.end ?? null,
+      start: startValue,
+      end: endValue,
       all_day: payload.allDay ?? null,
       property_id: payload.propertyId ?? null,
     })
@@ -160,8 +182,8 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     id: data.id,
     title: data.title,
-    start: data.start,
-    end: data.end ?? undefined,
+    start: data.all_day ? toDateOnly(data.start) : data.start,
+    end: data.all_day ? (data.end ? toDateOnly(data.end) : undefined) : (data.end ?? undefined),
     allDay: data.all_day ?? undefined,
     color: OTA_COLORS["manual"],
     extendedProps: { source: "manual", propertyId: data.property_id ?? null },

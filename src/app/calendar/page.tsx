@@ -6,12 +6,14 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { CalendarEvent } from "@/types/events";
 import Spinner from "@/components/Spinner";
+import { useToast } from "@/components/ToastProvider";
 
  type PropertyItem = { id: string; name: string };
 
 export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mutatingCount, setMutatingCount] = useState(0);
   const [view, setView] = useState<"dayGridMonth" | "timeGridWeek">("dayGridMonth");
   const [lastSyncedAt, setLastSyncedAt] = useState<string>("");
   const [lastNotesCount, setLastNotesCount] = useState<number>(0);
@@ -22,6 +24,10 @@ export default function CalendarPage() {
   const [typeFilter, setTypeFilter] = useState<"all" | "manual" | "ics" | "notes">("all");
   const calendarRef = useRef<FullCalendar | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
+  const { showToast } = useToast();
+
+  const beginMutation = () => setMutatingCount((c) => c + 1);
+  const endMutation = () => setMutatingCount((c) => Math.max(0, c - 1));
 
   // Selection modal state for choosing block vs note
   const [selectionOpen, setSelectionOpen] = useState(false);
@@ -31,6 +37,18 @@ export default function CalendarPage() {
   const [selectionEndStr, setSelectionEndStr] = useState<string>("");
   const [selectionAllDay, setSelectionAllDay] = useState<boolean>(true);
   const [selectionSaving, setSelectionSaving] = useState<boolean>(false);
+
+  // Note edit/delete modal state
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [noteModalEventId, setNoteModalEventId] = useState<string | null>(null);
+  const [noteModalText, setNoteModalText] = useState<string>("");
+  const [noteModalSaving, setNoteModalSaving] = useState<boolean>(false);
+
+  // Manual event delete confirm modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteModalEventId, setDeleteModalEventId] = useState<string | null>(null);
+  const [deleteModalTitle, setDeleteModalTitle] = useState<string>("");
+  const [deleteModalSaving, setDeleteModalSaving] = useState<boolean>(false);
 
   const fetchEvents = async (propertyId?: string | null) => {
     setLoading(true);
@@ -218,12 +236,19 @@ export default function CalendarPage() {
       end: ev.end?.toISOString(),
       allDay: ev.allDay,
     };
+    beginMutation();
     const res = await fetch(`/api/events/${ev.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) await fetchEvents(selectedPropertyId);
+    if (res.ok) {
+      showToast("Event updated", "success");
+    } else {
+      showToast("Failed to update", "error");
+      await fetchEvents(selectedPropertyId);
+    }
+    endMutation();
   };
 
   // Enable tap-to-select on mobile: single-day selection via date click
@@ -235,11 +260,16 @@ export default function CalendarPage() {
       return;
     }
     // Prepare selection modal with a single all-day day
-    const startIso = arg.date instanceof Date ? arg.date.toISOString() : new Date(arg.date).toISOString();
-    const nextDay = new Date(new Date(startIso).getTime() + 24 * 60 * 60 * 1000);
-    const endIso = nextDay.toISOString();
-    setSelectionStartStr(startIso);
-    setSelectionEndStr(endIso);
+    // Use dateStr (YYYY-MM-DD) to avoid timezone off-by-one issues locally
+    const startDateOnly = arg.dateStr as string; // guaranteed by FullCalendar
+    const nextDay = new Date(Date.UTC(
+      Number(startDateOnly.substring(0, 4)),
+      Number(startDateOnly.substring(5, 7)) - 1,
+      Number(startDateOnly.substring(8, 10)) + 1
+    ));
+    const endDateOnly = nextDay.toISOString().substring(0, 10);
+    setSelectionStartStr(startDateOnly);
+    setSelectionEndStr(endDateOnly);
     setSelectionAllDay(true);
     setSelectionAction("block");
     setSelectionNoteText("");
@@ -254,25 +284,15 @@ export default function CalendarPage() {
     if (isIcs) return;
     if (isNote) {
       const current = ev.extendedProps?.noteText as string | undefined;
-      const next = prompt("Edit note (leave empty to delete):", current || "");
-      if (next === null) return; // cancel
-      if (!next) {
-        const del = await fetch(`/api/notes/${ev.id}`, { method: "DELETE" });
-        if (del.ok) fetchEvents(selectedPropertyId);
-      } else {
-        const upd = await fetch(`/api/notes/${ev.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: next }),
-        });
-        if (upd.ok) fetchEvents(selectedPropertyId);
-      }
+      setNoteModalEventId(ev.id);
+      setNoteModalText(current || "");
+      setNoteModalOpen(true);
       return;
     }
-    if (confirm(`Unblock/delete event '${ev.title}'?`)) {
-      const res = await fetch(`/api/events/${ev.id}`, { method: "DELETE" });
-      if (res.ok) fetchEvents(selectedPropertyId);
-    }
+    // Manual event delete confirmation
+    setDeleteModalEventId(ev.id);
+    setDeleteModalTitle(ev.title || "Event");
+    setDeleteModalOpen(true);
   };
 
   const onToggleView = () => {
@@ -306,6 +326,8 @@ export default function CalendarPage() {
     // Bookings (iCal) only
     return events.filter((ev: any) => (ev?.extendedProps?.source ?? "manual") === "ics");
   }, [events, typeFilter]);
+
+  const isMutating = mutatingCount > 0;
 
   return (
     <div className="space-y-4">
@@ -343,7 +365,9 @@ export default function CalendarPage() {
                     onChange={(e) => setSelectionNoteText(e.target.value)}
                     placeholder="e.g. Guest request, maintenance, pricing note"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Notes attach to the start date only for the selected property.</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {selectionAllDay ? "Notes attach to each day in the selected range." : "Notes attach to the start date only for the selected property."}
+                  </p>
                 </div>
               )}
             </div>
@@ -364,24 +388,90 @@ export default function CalendarPage() {
                       allDay: selectionAllDay,
                       propertyId,
                     } as any;
+                    // Optimistic UI: insert a temporary event immediately
+                    const tempId = `temp-${Date.now()}`;
+                    const optimisticEvent: CalendarEvent = {
+                      id: tempId,
+                      title: payload.title,
+                      start: payload.start,
+                      end: payload.end,
+                      allDay: !!payload.allDay,
+                      backgroundColor: "#6B7280", // neutral grey
+                      extendedProps: { source: "manual", propertyId, optimistic: true },
+                    } as any;
+                    setEvents((prev) => [optimisticEvent, ...prev]);
+                    beginMutation();
                     const res = await fetch("/api/events", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify(payload),
                     });
                     setSelectionOpen(false);
-                    if (res.ok) fetchEvents(selectedPropertyId);
                     try { calendarRef.current?.getApi().unselect(); } catch {}
+                    if (res.ok) {
+                      showToast("Dates blocked", "success");
+                      await fetchEvents(selectedPropertyId);
+                    } else {
+                      // Remove optimistic entry if request failed
+                      setEvents((prev) => prev.filter((e: any) => e.id !== tempId));
+                      showToast("Failed to block dates", "error");
+                    }
+                    endMutation();
                   } else {
-                    const dateOnly = selectionStartStr.substring(0, 10);
                     if (!selectionNoteText.trim()) return;
-                    const res = await fetch("/api/notes", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ propertyId, date: dateOnly, text: selectionNoteText.trim() }),
+                    const startDateOnly = selectionStartStr.substring(0, 10);
+                    const endDateOnly = selectionAllDay && selectionEndStr ? selectionEndStr.substring(0, 10) : startDateOnly;
+                    // Build list of dates in [start, end) with exclusive end semantics
+                    const dates: string[] = [];
+                    let d = new Date(startDateOnly + "T00:00:00Z");
+                    const end = new Date(endDateOnly + "T00:00:00Z");
+                    while (d < end) {
+                      dates.push(d.toISOString().substring(0, 10));
+                      d.setUTCDate(d.getUTCDate() + 1);
+                    }
+                    if (dates.length === 0) dates.push(startDateOnly);
+
+                    // Insert optimistic notes for all dates
+                    const tempIds: string[] = [];
+                    const optimisticNotes: CalendarEvent[] = dates.map((date, idx) => {
+                      const id = `temp-note-${Date.now()}-${idx}`;
+                      tempIds.push(id);
+                      return {
+                        id,
+                        title: `📝 ${selectionNoteText.trim()}`,
+                        start: date,
+                        end: undefined,
+                        allDay: true,
+                        color: "#F59E0B",
+                        extendedProps: { source: "note", propertyId, noteText: selectionNoteText.trim(), optimistic: true },
+                      } as any;
                     });
+                    setEvents((prev) => [...optimisticNotes, ...prev]);
+
+                    beginMutation();
+                    const results = await Promise.allSettled(
+                      dates.map((date) =>
+                        fetch("/api/notes", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ propertyId, date, text: selectionNoteText.trim() }),
+                        })
+                      )
+                    );
                     setSelectionOpen(false);
-                    if (res.ok) fetchEvents(selectedPropertyId);
+
+                    const okCount = results.filter((r: any) => r.status === "fulfilled" && r.value?.ok).length;
+                    const failedCount = dates.length - okCount;
+                    if (failedCount === 0) {
+                      showToast(dates.length > 1 ? `Notes added (${dates.length})` : "Note added", "success");
+                      await fetchEvents(selectedPropertyId);
+                    } else {
+                      // Remove optimistic entries for failed requests
+                      setEvents((prev) => prev.filter((e: any) => !tempIds.includes(e.id)));
+                      showToast(`Failed to add ${failedCount} note(s)`, "error");
+                      await fetchEvents(selectedPropertyId);
+                    }
+                    endMutation();
                     try { calendarRef.current?.getApi().unselect(); } catch {}
                   }
                   setSelectionSaving(false);
@@ -390,6 +480,110 @@ export default function CalendarPage() {
               >
                 {selectionSaving ? "Saving..." : "Continue"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Note edit/delete modal */}
+      {noteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setNoteModalOpen(false)}></div>
+          <div className="relative z-10 w-full max-w-md rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xl">
+            <div className="p-4 space-y-2">
+              <h3 className="text-lg font-semibold">Edit note</h3>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Update the note text or delete it.</p>
+              <textarea
+                className="w-full rounded-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+                value={noteModalText}
+                onChange={(e) => setNoteModalText(e.target.value)}
+                placeholder="Note text"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2 p-3 border-t border-neutral-200 dark:border-neutral-800">
+              <button
+                className="px-3 py-1 rounded-md border border-red-200 text-red-700 dark:border-red-800 text-sm active:scale-95 transition-transform"
+                disabled={noteModalSaving}
+                onClick={async () => {
+                  if (!noteModalEventId) return;
+                  setNoteModalSaving(true);
+                  beginMutation();
+                  // Optimistically remove note
+                  setEvents((prev) => prev.filter((e: any) => e.id !== noteModalEventId));
+                  const del = await fetch(`/api/notes/${noteModalEventId}`, { method: "DELETE" });
+                  if (del.ok) {
+                    showToast("Note deleted", "success");
+                  } else {
+                    showToast("Failed to delete note", "error");
+                    await fetchEvents(selectedPropertyId);
+                  }
+                  endMutation();
+                  setNoteModalSaving(false);
+                  setNoteModalOpen(false);
+                }}
+                title="Delete note"
+              >Delete</button>
+              <div className="flex items-center gap-2">
+                <button className="px-3 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm active:scale-95 transition-transform" onClick={() => setNoteModalOpen(false)} disabled={noteModalSaving}>Cancel</button>
+                <button
+                  className="px-3 py-1 rounded-md bg-amber-500 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
+                  onClick={async () => {
+                    if (!noteModalEventId) return;
+                    setNoteModalSaving(true);
+                    beginMutation();
+                    const upd = await fetch(`/api/notes/${noteModalEventId}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ text: noteModalText.trim() }),
+                    });
+                    if (upd.ok) {
+                      showToast("Note updated", "success");
+                      await fetchEvents(selectedPropertyId);
+                    } else {
+                      showToast("Failed to update note", "error");
+                    }
+                    endMutation();
+                    setNoteModalSaving(false);
+                    setNoteModalOpen(false);
+                  }}
+                  disabled={noteModalSaving || !noteModalText.trim()}
+                >Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual event delete confirm modal */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteModalOpen(false)}></div>
+          <div className="relative z-10 w-full max-w-md rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xl">
+            <div className="p-4 space-y-2">
+              <h3 className="text-lg font-semibold">Delete event</h3>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Unblock/delete '{deleteModalTitle}'. This cannot be undone.</p>
+            </div>
+            <div className="flex items-center justify-end gap-2 p-3 border-t border-neutral-200 dark:border-neutral-800">
+              <button className="px-3 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 text-sm active:scale-95 transition-transform" onClick={() => setDeleteModalOpen(false)} disabled={deleteModalSaving}>Cancel</button>
+              <button
+                className="px-3 py-1 rounded-md bg-red-600 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
+                onClick={async () => {
+                  if (!deleteModalEventId) return;
+                  setDeleteModalSaving(true);
+                  beginMutation();
+                  setEvents((prev) => prev.filter((e: any) => e.id !== deleteModalEventId));
+                  const res = await fetch(`/api/events/${deleteModalEventId}`, { method: "DELETE" });
+                  if (res.ok) {
+                    showToast("Event deleted", "success");
+                  } else {
+                    showToast("Failed to delete event", "error");
+                    await fetchEvents(selectedPropertyId);
+                  }
+                  endMutation();
+                  setDeleteModalSaving(false);
+                  setDeleteModalOpen(false);
+                }}
+              >Delete</button>
             </div>
           </div>
         </div>
@@ -463,19 +657,27 @@ export default function CalendarPage() {
         </div>
       </div>
       {loading && <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>}
-      <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-3 bg-white dark:bg-neutral-900 shadow-sm">
+      <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-3 bg-white dark:bg-neutral-900 shadow-sm relative">
+        {isMutating && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center">
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-blue-50 text-blue-800 border border-blue-200 text-sm shadow">
+              <Spinner className="h-4 w-4" />
+              <span>Updating…</span>
+            </div>
+          </div>
+        )}
         <FullCalendar
           ref={calendarRef as any}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           headerToolbar={{ left: "prev,next", center: "title", right: "" }}
           initialView="dayGridMonth"
-          timeZone="UTC"
-          selectable
+          timeZone="local"
+          selectable={!isMutating}
           selectMirror
           selectLongPressDelay={250}
-          editable
-          eventStartEditable
-          eventDurationEditable
+          editable={!isMutating}
+          eventStartEditable={!isMutating}
+          eventDurationEditable={!isMutating}
           select={handleDateSelect}
           dateClick={handleDateClick}
           eventChange={handleEventChange}
@@ -493,8 +695,9 @@ export default function CalendarPage() {
           eventContent={(arg) => {
             const bg = (arg.event as any).backgroundColor || (arg.event.extendedProps as any)?.color || arg.backgroundColor;
             const text = arg.timeText ? `${arg.timeText} ${arg.event.title}` : arg.event.title;
+            const isPending = !!(arg.event.extendedProps as any)?.optimistic;
             const el = document.createElement("div");
-            el.className = "truncate text-[12px] leading-5 transition-[filter]";
+            el.className = "truncate text-[12px] leading-5 transition-[filter]" + (isPending ? " opacity-70" : "");
             el.style.cssText = `background:${bg || "#e5e7eb"}; color:white; padding:3px 8px; border-radius:9px;`;
             el.innerText = text;
             el.onmouseenter = () => (el.style.filter = "brightness(0.9)");

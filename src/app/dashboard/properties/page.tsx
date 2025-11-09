@@ -23,6 +23,10 @@ export default function PropertiesPage() {
   const [items, setItems] = useState<PropertyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [events, setEvents] = useState<any[]>([]);
+  const [eventsLoading, setEventsLoading] = useState<boolean>(false);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [occupancyByProperty, setOccupancyByProperty] = useState<Record<string, number>>({});
 
   const [form, setForm] = useState<FormState>({ name: "", icals: [""], submitting: false, error: null });
 
@@ -75,6 +79,70 @@ export default function PropertiesPage() {
     })();
     return () => { alive = false; };
   }, []);
+
+  // Fetch events once to compute occupancy per property (last 30 days, ICS only)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setEventsLoading(true);
+        const er = await fetch("/api/events", { cache: "no-store" });
+        if (!er.ok) {
+          try { const j = await er.json(); setEventsError(j?.error || "Failed to load events"); } catch { setEventsError("Failed to load events"); }
+          return;
+        }
+        const data = await er.json();
+        if (alive) setEvents(data || []);
+      } catch {
+        if (alive) setEventsError("Failed to load events");
+      } finally {
+        if (alive) setEventsLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // Compute next 30-day occupancy per property from ICS events
+  useEffect(() => {
+    if (!items.length || !events.length) { setOccupancyByProperty({}); return; }
+    const windowDays = 30;
+    // Use local midnight boundaries and NEXT 30 days window
+    const start = new Date(); start.setHours(0,0,0,0);
+    const end = new Date(start); end.setDate(start.getDate() + windowDays); // exclusive end
+
+    // Precompute daily ranges (local date boundaries)
+    const days: { dStart: Date; dEnd: Date; s: string }[] = [];
+    let cursor = new Date(start);
+    while (cursor < end) {
+      const dStart = new Date(cursor);
+      const dEnd = new Date(cursor); dEnd.setDate(dEnd.getDate() + 1);
+      const s = dStart.toISOString().substring(0, 10);
+      days.push({ dStart, dEnd, s });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const occupied: Record<string, Set<string>> = {};
+    const overlaps = (aS: Date, aE: Date | null, bS: Date, bE: Date) => aS.getTime() < bE.getTime() && bS.getTime() < (aE ?? aS).getTime();
+    for (const ev of events as any[]) {
+      const src = ev?.extendedProps?.source as string | undefined;
+      const pid = ev?.extendedProps?.propertyId as string | undefined;
+      if (!pid || src !== "ics") continue;
+      const s = new Date(ev.start);
+      const e = ev.end ? new Date(ev.end) : null;
+      for (const d of days) {
+        if (overlaps(s, e, d.dStart, d.dEnd)) {
+          (occupied[pid] ||= new Set<string>()).add(d.s);
+        }
+      }
+    }
+
+    const occ: Record<string, number> = {};
+    for (const p of items) {
+      const set = occupied[p.id] || new Set<string>();
+      occ[p.id] = Math.round((set.size / windowDays) * 100);
+    }
+    setOccupancyByProperty(occ);
+  }, [items, events]);
 
   const canAddMoreIcals = useMemo(() => form.icals.filter(Boolean).length < 5 && form.icals.length < 5, [form.icals]);
   const canAddMoreEditIcals = useMemo(() => editIcals.filter(Boolean).length < 5 && editIcals.length < 5, [editIcals]);
@@ -228,9 +296,9 @@ export default function PropertiesPage() {
         ) : items.length === 0 ? (
           <p className="text-sm text-gray-600 dark:text-gray-400">No properties yet. Add one above.</p>
         ) : (
-          <ul className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((p) => (
-              <li key={p.id} className="rounded-md border border-gray-200 dark:border-gray-700 p-4">
+              <div key={p.id} className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm">
                 {editingId === p.id ? (
                   <div className="space-y-3">
                     <div>
@@ -266,10 +334,22 @@ export default function PropertiesPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-1">
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">{p.icalUrls?.length || 0} iCal link(s)</div>
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-semibold text-lg">{p.name}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">{p.icalUrls?.length || 0} iCal link(s)</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Occupancy (30d)</div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-medium">{Number.isFinite(occupancyByProperty[p.id]) ? `${occupancyByProperty[p.id]}%` : "—"}</div>
+                          <div className="h-2 w-20 rounded bg-gray-200 dark:bg-neutral-800 overflow-hidden" aria-hidden>
+                            <div className="h-full bg-green-500" style={{ width: `${Math.min(100, Math.max(0, occupancyByProperty[p.id] ?? 0))}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                       {p.icalUrls?.length ? (
                         <ul className="text-xs list-disc ml-4 text-gray-700 dark:text-gray-300">
                           {p.icalUrls.map((i) => (
@@ -280,11 +360,11 @@ export default function PropertiesPage() {
                       {p.icalToken ? (
                         <div className="mt-2 space-y-1">
                           <div className="text-xs text-gray-600 dark:text-gray-400">Unified iCal export link</div>
-                          <div className="flex items-center gap-2 max-w-xl">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 max-w-full">
                             <input
                               readOnly
                               value={`${origin}/api/ical/${p.icalToken}`}
-                              className="flex-1 overflow-hidden text-ellipsis rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs"
+                              className="w-full sm:flex-1 overflow-hidden text-ellipsis rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs"
                             />
                             <button
                               type="button"
@@ -305,16 +385,15 @@ export default function PropertiesPage() {
                           </p>
                         </div>
                       ) : null}
-                    </div>
                     <div className="flex gap-2">
                       <button onClick={() => startEdit(p)} className="px-3 py-2 rounded border border-gray-300 dark:border-gray-700 active:scale-95 transition-transform">Edit</button>
                       <button onClick={() => deleteItem(p.id)} className="px-3 py-2 rounded bg-red-600 text-white active:scale-95 transition-transform">Delete</button>
                     </div>
                   </div>
                 )}
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
