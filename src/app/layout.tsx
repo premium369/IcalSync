@@ -54,11 +54,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {`(function(){try{var d=document.documentElement;var t;try{t=localStorage.getItem('theme')}catch(e){};if(t==='light'||t==='dark'){d.setAttribute('data-theme',t);}else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){d.setAttribute('data-theme','dark');}else{d.setAttribute('data-theme','light');}d.style.colorScheme=d.getAttribute('data-theme');if(d.getAttribute('data-theme')==='dark'){d.classList.add('dark');}else{d.classList.remove('dark');}}catch(e){}})();`}
         </Script>
       </head>
-      <body className="bg-background text-foreground min-h-screen antialiased">
+      <body className="bg-background text-foreground min-h-screen antialiased overflow-x-hidden">
         <header className="site-header sticky top-0 z-40 backdrop-blur border-b border-neutral-200 dark:border-neutral-800">
-          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between">
             <Link href="/" className="font-semibold">Ical Sync</Link>
-            <nav className="flex items-center gap-4 text-sm">
+            <nav className="flex items-center gap-2 sm:gap-4 text-sm">
+              <Link href="/#features" className="hidden md:inline hover:underline">Features</Link>
+              <Link href="/#how-it-works" className="hidden md:inline hover:underline">How it works</Link>
+              <Link href="/#contact" className="hidden md:inline hover:underline">Contact</Link>
               <ThemeToggle />
               {user ? (
                 <div className="flex items-center gap-2">
@@ -73,7 +76,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </nav>
           </div>
         </header>
-        <main className="max-w-6xl mx-auto px-4 py-12 sm:py-14">
+        <main className="max-w-6xl mx-auto px-3 sm:px-4 py-12 sm:py-14">
           <ToastProvider>
             {children}
           </ToastProvider>
