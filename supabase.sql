@@ -253,3 +253,53 @@ BEGIN
       ));
   END IF;
 END$$;
+-- Blog posts schema
+create table if not exists public.blog_posts (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique not null,
+  title text not null,
+  content text not null,
+  excerpt text,
+  featured_image_path text,
+  status text not null default 'draft', -- 'draft' | 'published'
+  views integer not null default 0,
+  seo_title text,
+  seo_description text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Enable RLS for blog posts
+alter table public.blog_posts enable row level security;
+
+-- Public can view published posts
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='blog_posts' AND policyname='Public can view published blog posts'
+  ) THEN
+    CREATE POLICY "Public can view published blog posts"
+      ON public.blog_posts FOR SELECT
+      USING (status = 'published');
+  END IF;
+END$$;
+
+-- Maintain updated_at on update
+CREATE OR REPLACE FUNCTION public.touch_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'blog_posts_touch_updated_at'
+  ) THEN
+    CREATE TRIGGER blog_posts_touch_updated_at
+    BEFORE UPDATE ON public.blog_posts
+    FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+  END IF;
+END$$;

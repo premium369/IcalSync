@@ -148,16 +148,16 @@ html[data-theme="light"] {
 /* Gentle texture for light background */
 html[data-theme="light"] body {
   background:
-    radial-gradient(1200px 500px at 20% -10%, rgba(59,130,246,0.04), transparent 60%),
-    radial-gradient(1000px 400px at 110% 10%, rgba(99,102,241,0.04), transparent 60%),
+    radial-gradient(1200px 500px at 20% -10%, rgba(2,132,199,0.05), transparent 60%),
+    radial-gradient(1000px 400px at 110% 10%, rgba(79,70,229,0.05), transparent 60%),
     var(--background);
 }
 
 /* Gentle texture for dark background to match landing visuals */
 html[data-theme="dark"] body {
   background:
-    radial-gradient(900px 350px at 15% -10%, rgba(59,130,246,0.06), transparent 60%),
-    radial-gradient(900px 350px at 120% 10%, rgba(99,102,241,0.06), transparent 60%),
+    radial-gradient(900px 350px at 15% -10%, rgba(2,132,199,0.06), transparent 60%),
+    radial-gradient(900px 350px at 120% 10%, rgba(79,70,229,0.06), transparent 60%),
     var(--background);
 }
 

@@ -1,12 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { TRIAL_DAYS, plansCatalog, SUPER_HOST_LIMIT, BUSINESS_LIMIT } from "@/lib/plans";
+import { plansCatalog, SUPER_HOST_LIMIT } from "@/lib/plans";
 
 type PlanRow = {
   user_id: string;
-  plan: "basic" | "super_host" | "business";
-  trial_started_at: string | null;
-  trial_ends_at: string | null;
+  plan: "basic" | "super_host" | "custom";
 };
 
 export default function BillingInner() {
@@ -14,15 +12,12 @@ export default function BillingInner() {
   const [plan, setPlan] = useState<PlanRow | null>(null);
   const [countProps, setCountProps] = useState<number | null>(null);
   const [message, setMessage] = useState("");
-  const [desired, setDesired] = useState<"super_host" | "business" | "custom">("super_host");
+  const [desired, setDesired] = useState<"super_host" | "custom">("super_host");
   const [contact, setContact] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const trialActive = useMemo(() => {
-    if (!plan?.trial_ends_at) return false;
-    return new Date(plan.trial_ends_at).getTime() > Date.now();
-  }, [plan]);
+  const trialActive = false;
 
   useEffect(() => {
     (async () => {
@@ -66,7 +61,7 @@ export default function BillingInner() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Billing</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-300">Free trial first, upgrade later. Dodo Payments coming soon.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300">Upgrade requests only. Payments to be added later.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -78,27 +73,13 @@ export default function BillingInner() {
             <ul className="mt-3 space-y-1 text-sm text-gray-700 dark:text-gray-300">
               {p.features.map((f) => (<li key={f}>• {f}</li>))}
             </ul>
-            <button
-              className="mt-4 w-full rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 active:scale-95 transition-transform"
+            <a
+              href="#request"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 active:scale-95 transition-transform"
               onClick={() => setDesired(p.id as any)}
-            >{p.cta}</button>
+            >{p.cta}</a>
           </div>
         ))}
-
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
-          <h3 className="font-semibold">Custom</h3>
-          <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">Tell us what you need</div>
-          <div className="mt-2 text-2xl font-bold">Contact</div>
-          <ul className="mt-3 space-y-1 text-sm text-gray-700 dark:text-gray-300">
-            <li>• More than {SUPER_HOST_LIMIT} properties</li>
-            <li>• Dedicated support</li>
-            <li>• Integrations</li>
-          </ul>
-          <button
-            className="mt-4 w-full rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform"
-            onClick={() => setDesired("custom")}
-          >Contact us</button>
-        </div>
       </div>
 
       <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
@@ -107,17 +88,19 @@ export default function BillingInner() {
           <p className="text-sm text-gray-500">Loading…</p>
         ) : plan ? (
           <div className="text-sm">
-            <div>Plan: <span className="font-medium capitalize">{trialActive ? "Trial (Super Host limits)" : plan.plan.replace("_"," ")}</span></div>
-            <div>{trialActive ? (<>Trial ends <span className="font-medium">{new Date(plan.trial_ends_at!).toLocaleDateString()}</span></>) : "No active trial"}</div>
+            <div>Plan: <span className="font-medium capitalize">{plan.plan.replace("_"," ")}</span></div>
             <div>Properties in use: {countProps ?? "—"}</div>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">No plan data yet.</p>
+          <div className="text-sm">
+            <div className="mb-2 text-gray-500">No plan is active yet.</div>
+            <a href="#request" className="inline-flex rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700" onClick={() => setDesired("super_host")}>Request access</a>
+          </div>
         )}
       </div>
 
-      <form onSubmit={submitRequest} className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 space-y-3">
-        <h3 className="font-semibold">Request an upgrade</h3>
+      <form id="request" onSubmit={submitRequest} className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 space-y-3">
+        <h3 className="font-semibold">Request access</h3>
         {submitted ? (
           <div className="text-sm text-green-600">Thanks! We received your request. We will email you soon.</div>
         ) : (
@@ -126,7 +109,6 @@ export default function BillingInner() {
               <label className="text-sm">Desired plan</label>
               <select value={desired} onChange={(e) => setDesired(e.target.value as any)} className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm">
                 <option value="super_host">Super Host</option>
-                <option value="business">Business</option>
                 <option value="custom">Custom</option>
               </select>
             </div>

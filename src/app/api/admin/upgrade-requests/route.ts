@@ -62,8 +62,8 @@ export async function PATCH(req: NextRequest) {
 
   if (action === "approve") {
     const targetPlan = (new_plan || reqRow.desired_plan);
-    if (!["super_host", "business"].includes(targetPlan)) {
-      return NextResponse.json({ error: "Approvals must set plan to super_host or business" }, { status: 400 });
+    if (!["super_host", "custom"].includes(targetPlan)) {
+      return NextResponse.json({ error: "Approvals must set plan to super_host or custom" }, { status: 400 });
     }
     // Upsert user plan to targetPlan
     const { error: upErr } = await svc

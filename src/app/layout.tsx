@@ -1,9 +1,10 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase-server";
 import ToastProvider from "@/components/ToastProvider";
-import ThemeToggle from "@/components/ThemeToggle";
+import AnimatedHeader from "@/components/AnimatedHeader";
 import Script from "next/script";
 
 export const metadata: Metadata = {
@@ -55,41 +56,49 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </Script>
       </head>
       <body className="bg-background text-foreground min-h-screen antialiased overflow-x-hidden">
-        <header className="site-header sticky top-0 z-40 backdrop-blur border-b border-neutral-200 dark:border-neutral-800">
-          <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between">
-            <Link href="/" className="font-semibold">Ical Sync</Link>
-            <nav className="flex items-center gap-2 sm:gap-4 text-sm">
-              <Link href="/#features" className="hidden md:inline hover:underline">Features</Link>
-              <Link href="/#how-it-works" className="hidden md:inline hover:underline">How it works</Link>
-              <Link href="/#contact" className="hidden md:inline hover:underline">Contact</Link>
-              <ThemeToggle />
-              {user ? (
-                <div className="flex items-center gap-2">
-                  <Link href="/dashboard" className="rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform">Dashboard</Link>
-                  <form action="/auth/signout" method="post">
-                    <button type="submit" className="rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform">Logout</button>
-                  </form>
-                </div>
-              ) : (
-                <Link href="/login" className="rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-neutral-800 active:scale-95 transition-transform">Login</Link>
-              )}
-            </nav>
-          </div>
-        </header>
+        <AnimatedHeader isLoggedIn={!!user} />
         <main className="max-w-6xl mx-auto px-3 sm:px-4 py-12 sm:py-14">
           <ToastProvider>
             {children}
           </ToastProvider>
         </main>
-        <footer className="border-t border-neutral-200 dark:border-neutral-800 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>© {new Date().getFullYear()} Ical Sync · 
-            <a
-              href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@icalsync.app"}`}
-              className="underline hover:text-gray-700 dark:hover:text-gray-200"
-            >
-              Support
-            </a>
-          </p>
+        <footer className="border-t border-neutral-200 dark:border-neutral-800 py-10 text-sm">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
+              <div className="text-center sm:text-left">
+                <div className="text-base font-semibold text-neutral-800 dark:text-neutral-100">Ical Sync</div>
+                <div className="mt-1 text-gray-600 dark:text-gray-400">© {new Date().getFullYear()} All rights reserved</div>
+              </div>
+              <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-gray-600 dark:text-gray-400">
+                <Link href="/about" className="hover:text-gray-800 dark:hover:text-gray-200">About</Link>
+                <Link href="/privacypolicy" className="hover:text-gray-800 dark:hover:text-gray-200">Privacy Policy</Link>
+                <Link href="/termsandconditions" className="hover:text-gray-800 dark:hover:text-gray-200">Terms & Conditions</Link>
+                <Link href="/refundpolicy" className="hover:text-gray-800 dark:hover:text-gray-200">Refund & Cancellation</Link>
+                <Link href="/contactus" className="hover:text-gray-800 dark:hover:text-gray-200">Contact</Link>
+              </nav>
+              <div className="text-center sm:text-right">
+                <a
+                  href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "icalsync.app@gmail.com"}`}
+                  className="inline-flex items-center gap-2 rounded-md border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800"
+                >
+                  <span>Support</span>
+                  <span className="underline">{process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "icalsync.app@gmail.com"}</span>
+                </a>
+              </div>
+            </div>
+            <div className="mt-6 text-center space-y-2">
+              <div className="text-xs text-gray-600 dark:text-gray-400">Powered by</div>
+              <a
+                href="https://staywithseasons.com/?utm_source=icalsync&utm_medium=website&utm_campaign=landing"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center rounded-full bg-white/80 dark:bg-white/10 px-4 py-2 ring-1 ring-neutral-200 dark:ring-white/15 hover:bg-white/90 dark:hover:bg-white/15 transition shadow-sm"
+                aria-label="Powered by Seasons"
+              >
+                <Image src="/seasons-logo.png" alt="Seasons" width={120} height={30} />
+              </a>
+            </div>
+          </div>
         </footer>
       </body>
     </html>

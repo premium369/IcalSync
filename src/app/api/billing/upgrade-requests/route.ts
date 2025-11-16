@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const message = (body.message || "").trim();
   const contact_email = (body.contact_email || "").trim();
 
-  if (!desired_plan || !["super_host", "business", "custom"].includes(desired_plan)) {
+  if (!desired_plan || !["super_host", "custom"].includes(desired_plan)) {
     return NextResponse.json({ error: "Invalid desired plan" }, { status: 400 });
   }
   if (!contact_email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact_email)) {
