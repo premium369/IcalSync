@@ -54,7 +54,9 @@ export default function PropertiesPage() {
       try {
         json = text ? JSON.parse(text) : {};
       } catch {
-        throw new Error(text.slice(0, 100) || `Error ${res.status}`);
+        const preview = text.slice(0, 200);
+        console.error("JSON parse error. Status:", res.status, "URL:", res.url, "Body:", text);
+        throw new Error(`Server returned HTML (Status ${res.status}): ${preview}`);
       }
 
       if (!res.ok) throw new Error(json.error || "Failed to rotate");
@@ -179,7 +181,9 @@ export default function PropertiesPage() {
       try {
         json = text ? JSON.parse(text) : {};
       } catch {
-        throw new Error(text.slice(0, 100) || `Error ${res.status}`);
+        const preview = text.slice(0, 200);
+        console.error("JSON parse error. Status:", res.status, "URL:", res.url, "Body:", text);
+        throw new Error(`Server returned HTML (Status ${res.status}): ${preview}`);
       }
 
       if (!res.ok) throw new Error(json.error || "Failed to create");
@@ -233,7 +237,9 @@ export default function PropertiesPage() {
       try {
         json = text ? JSON.parse(text) : {};
       } catch {
-        throw new Error(text.slice(0, 100) || `Error ${res.status}`);
+        const preview = text.slice(0, 200);
+        console.error("JSON parse error. Status:", res.status, "URL:", res.url, "Body:", text);
+        throw new Error(`Server returned HTML (Status ${res.status}): ${preview}`);
       }
 
       if (!res.ok) throw new Error(json.error || "Failed to update");
@@ -255,7 +261,9 @@ export default function PropertiesPage() {
       try {
         json = text ? JSON.parse(text) : {};
       } catch {
-        throw new Error(text.slice(0, 100) || `Error ${res.status}`);
+        const preview = text.slice(0, 200);
+        console.error("JSON parse error. Status:", res.status, "URL:", res.url, "Body:", text);
+        throw new Error(`Server returned HTML (Status ${res.status}): ${preview}`);
       }
 
       if (!res.ok) throw new Error(json.error || "Failed to delete");
