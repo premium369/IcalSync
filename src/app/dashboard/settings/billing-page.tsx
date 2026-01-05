@@ -12,7 +12,7 @@ export default function BillingInner() {
   const [plan, setPlan] = useState<PlanRow | null>(null);
   const [countProps, setCountProps] = useState<number | null>(null);
   const [message, setMessage] = useState("");
-  const [desired, setDesired] = useState<"super_host" | "custom">("super_host");
+  const [desired, setDesired] = useState<import("@/lib/plans").PlanName>("super_host");
   const [contact, setContact] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -76,7 +76,7 @@ export default function BillingInner() {
             <a
               href="#request"
               className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 active:scale-95 transition-transform"
-              onClick={() => setDesired(p.id as any)}
+              onClick={() => setDesired(p.id)}
             >{p.cta}</a>
           </div>
         ))}
@@ -107,7 +107,7 @@ export default function BillingInner() {
           <>
             <div className="flex flex-col gap-2">
               <label className="text-sm">Desired plan</label>
-              <select value={desired} onChange={(e) => setDesired(e.target.value as any)} className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm">
+              <select value={desired} onChange={(e) => setDesired(e.target.value as import("@/lib/plans").PlanName)} className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm">
                 <option value="super_host">Super Host</option>
                 <option value="custom">Custom</option>
               </select>

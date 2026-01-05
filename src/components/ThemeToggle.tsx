@@ -12,7 +12,7 @@ function applyTheme(next: "light" | "dark") {
     root.classList.remove("dark");
   }
   // Hint the UA for built-in form controls, scrollbars, etc.
-  (root as any).style.colorScheme = next;
+  root.style.setProperty("color-scheme", next);
   try {
     localStorage.setItem("theme", next);
   } catch {}

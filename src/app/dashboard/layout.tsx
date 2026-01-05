@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import InteractiveOnboarding from "@/components/InteractiveOnboarding";
 
 type PageItem = { label: string; href: string; kind?: "link" | "action" };
 
@@ -10,6 +11,7 @@ const PAGES: PageItem[] = [
   { label: "Home", href: "/dashboard" },
   { label: "Properties", href: "/dashboard/properties" },
   { label: "Calendar", href: "/dashboard/calendar" },
+  { label: "How to Use", href: "/dashboard/how-to" },
   { label: "Settings", href: "/dashboard/settings" },
   // Logout is rendered as a form action in both mobile dropdown and desktop list
 ];
@@ -52,8 +54,15 @@ function DesktopNav({ currentHref }: { currentHref: string }) {
         <Link
           key={p.href}
           href={p.href}
+          data-tour-id={
+            p.href === "/dashboard" ? "nav-home" :
+            p.href === "/dashboard/properties" ? "nav-properties" :
+            p.href === "/dashboard/calendar" ? "nav-calendar" :
+            p.href === "/dashboard/how-to" ? "nav-how-to-use" :
+            p.href === "/dashboard/settings" ? "nav-settings" : undefined
+          }
           className={
-            "block rounded px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform " +
+            "block rounded px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 active:bg-gray-100 dark:active:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors transition-transform duration-150 " +
             (p.href === currentHref ? "bg-blue-600/10 text-blue-700 dark:text-blue-300" : "")
           }
         >
@@ -61,7 +70,7 @@ function DesktopNav({ currentHref }: { currentHref: string }) {
         </Link>
       ))}
       <form action="/auth/signout" method="post">
-        <button type="submit" className="w-full text-left rounded px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform">Logout</button>
+        <button type="submit" className="w-full text-left rounded px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 active:bg-gray-100 dark:active:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors transition-transform duration-150">Logout</button>
       </form>
     </nav>
   );
@@ -107,6 +116,7 @@ function MobileDropdown() {
         aria-controls="dashboard-mobile-dropdown"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between rounded-md bg-neutral-100 dark:bg-neutral-900/60 px-3 py-2 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors active:scale-95 transition-transform"
+        data-tour-id="mobile-menu-toggle"
       >
         <span className="truncate">{current.label}</span>
         <svg className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -135,8 +145,15 @@ function MobileDropdown() {
                     if (pathname !== item.href) router.push(item.href);
                   }}
                   className={
-                    "flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform " +
+                    "flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 active:bg-gray-100 dark:active:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors transition-transform duration-150 " +
                     (active ? "bg-blue-600/10 text-blue-700 dark:text-blue-300" : "")
+                  }
+                  data-tour-id={
+                    item.href === "/dashboard" ? "nav-home" :
+                    item.href === "/dashboard/properties" ? "nav-properties" :
+                    item.href === "/dashboard/calendar" ? "nav-calendar" :
+                    item.href === "/dashboard/how-to" ? "nav-how-to-use" :
+                    item.href === "/dashboard/settings" ? "nav-settings" : undefined
                   }
                 >
                   <span>{item.label}</span>
@@ -154,7 +171,7 @@ function MobileDropdown() {
               <button
                 type="submit"
                 onClick={() => setOpen(false)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors active:scale-95 transition-transform"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 active:bg-gray-100 dark:active:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors transition-transform duration-150"
                 role="menuitem"
               >
                 Logout
@@ -169,9 +186,17 @@ function MobileDropdown() {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { pathname, current } = useCurrentPage();
+  const [demo, setDemo] = useState(false);
+  useEffect(() => {
+    try {
+      const u = new URL(window.location.href);
+      setDemo(u.searchParams.get("demo") === "1");
+    } catch {}
+  }, []);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
+      <InteractiveOnboarding demo={demo} />
       <aside className="md:sticky md:top-20 h-fit rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
         {/* Mobile dropdown (current page featured) */}
         <MobileDropdown />

@@ -5,5 +5,5 @@ export type CalendarEvent = {
   end?: string; // ISO string
   allDay?: boolean;
   color?: string;
-  extendedProps?: Record<string, any>;
+  extendedProps?: Record<string, unknown>;
 };

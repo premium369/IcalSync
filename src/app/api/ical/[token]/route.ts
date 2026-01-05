@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import ical from "node-ical";
 import { createServiceClient } from "@/lib/supabase-server";
 import crypto from "crypto";
 
@@ -21,16 +20,23 @@ function toIcsDateValue(dt: Date) {
   return `${y}${m}${d}`;
 }
 function foldLine(line: string) {
-  // Simple folding at 75 octets, prepend space for continuation
   if (line.length <= 75) return line;
-  const parts: string[] = [];
-  for (let i = 0; i < line.length; i += 75) {
-    parts.push((i === 0 ? "" : " ") + line.slice(i, i + 75));
+  let result = line.slice(0, 75);
+  let remaining = line.slice(75);
+  while (remaining.length > 0) {
+    // Continuation lines start with a space, so we take 74 chars to make total 75
+    result += "\r\n " + remaining.slice(0, 74);
+    remaining = remaining.slice(74);
   }
-  return parts.join("\r\n");
+  return result;
 }
 function escapeText(text: string) {
-  return text.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,|;/g, (m) => `\\${m}`);
+  // RFC 5545: escape backslash, newline, comma, semicolon
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,");
 }
 
 export async function GET(
@@ -57,11 +63,6 @@ export async function GET(
     .order("start");
   if (eErr) return new NextResponse("Server error", { status: 500 });
 
-  // NOTE: For export feeds consumed by OTAs (Airbnb, Booking.com),
-  // we only export MANUAL blocks created in this app.
-  // Avoid re-exporting imported OTA bookings to prevent duplication/loops.
-  // If needed later, this can be made configurable per property.
-
   type ExportEvent = { uid: string; summary: string; start: Date; end?: Date | null; allDay?: boolean };
   const exportEvents: ExportEvent[] = [];
 
@@ -71,8 +72,6 @@ export async function GET(
     const end = e.end ? new Date(e.end) : null;
     exportEvents.push({ uid: e.id, summary: e.title || "Blocked", start, end, allDay: !!e.all_day });
   });
-
-  // Do not include imported ICS items in export
 
   // Build ICS content
   const now = new Date();
@@ -84,7 +83,6 @@ export async function GET(
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(property.name)} Availability`,
     "X-WR-TIMEZONE:UTC",
-    // Hint to consumers that updates may be published frequently
     "X-PUBLISHED-TTL:PT5M",
   ];
 
@@ -95,8 +93,8 @@ export async function GET(
     const isAll = !!ev.allDay;
     if (isAll) {
       lines.push(`DTSTART;VALUE=DATE:${toIcsDateValue(ev.start)}`);
-      // DTEND for VALUE=DATE is exclusive. Our stored end from the UI is already exclusive.
       if (ev.end) {
+        // DTEND is exclusive
         const endDateExclusive = new Date(
           Date.UTC(
             ev.end.getUTCFullYear(),
@@ -120,16 +118,13 @@ export async function GET(
       if (ev.end) {
         lines.push(`DTEND:${toIcsDate(ev.end)}`);
       } else {
-        // Provide a minimal duration to ensure some OTAs treat it as blocking
         const oneHourLater = new Date(ev.start.getTime() + 60 * 60 * 1000);
         lines.push(`DTEND:${toIcsDate(oneHourLater)}`);
       }
     }
     lines.push(foldLine(`SUMMARY:${escapeText(ev.summary || "Blocked")}`));
-    // Explicitly mark as confirmed and opaque so OTAs block availability
     lines.push(`STATUS:CONFIRMED`);
-    lines.push(`TRANSP:OPAQUE`);
-    // Optional hint
+    lines.push(`TRANSP:OPAQUE`); // OPAQUE = blocked
     lines.push(foldLine(`DESCRIPTION:${escapeText("Blocked via caldne")}`));
     lines.push("END:VEVENT");
     return lines.join("\r\n");
@@ -143,12 +138,12 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      // Disable caching to ensure OTAs always fetch the freshest data
       "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
       "Pragma": "no-cache",
       "ETag": etag,
       "Last-Modified": lastModified,
-      "Content-Disposition": `attachment; filename=\"${property.name.replace(/[^a-z0-9_-]+/gi, "-")}-availability.ics\"`,
+      // Removed Content-Disposition attachment to allow inline viewing and avoid issues with some OTAs
+      // "Content-Disposition": `attachment; filename=\"${property.name.replace(/[^a-z0-9_-]+/gi, "-")}-availability.ics\"`,
     },
   });
 }

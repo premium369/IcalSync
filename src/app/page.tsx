@@ -448,9 +448,6 @@ export default function Home() {
                   </a>
                 </div>
               </div>
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-md overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-neutral-900 dark:to-neutral-900 flex items-center justify-center">
-                <span className="text-xs text-gray-600 dark:text-gray-400">Add image</span>
-              </div>
             </div>
           </div>
         </div>

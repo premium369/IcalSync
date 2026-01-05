@@ -23,9 +23,7 @@ export default function PropertiesPage() {
   const [items, setItems] = useState<PropertyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [events, setEvents] = useState<any[]>([]);
-  const [eventsLoading, setEventsLoading] = useState<boolean>(false);
-  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [events, setEvents] = useState<import("@/types/events").CalendarEvent[]>([]);
   const [occupancyByProperty, setOccupancyByProperty] = useState<Record<string, number>>({});
 
   const [form, setForm] = useState<FormState>({ name: "", icals: [""], submitting: false, error: null });
@@ -51,13 +49,21 @@ export default function PropertiesPage() {
     try {
       setRotatingId(id);
       const res = await fetch(`/api/properties/${id}/rotate-ical`, { method: "POST" });
-      const json: ApiOneResponse = await res.json();
+      const text = await res.text();
+      let json: ApiOneResponse;
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(text.slice(0, 100) || `Error ${res.status}`);
+      }
+
       if (!res.ok) throw new Error(json.error || "Failed to rotate");
       if (json.data) {
         setItems((prev) => prev.map((p) => (p.id === id ? (json.data as PropertyItem) : p)));
       }
-    } catch (e: any) {
-      alert(e.message || "Failed to rotate iCal token");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to rotate iCal token";
+      alert(msg);
     } finally {
       setRotatingId(null);
     }
@@ -71,8 +77,8 @@ export default function PropertiesPage() {
         const json: ApiListResponse = await res.json();
         if (!res.ok) throw new Error(json.error || "Failed to load");
         if (alive) setItems(json.data || []);
-      } catch (e: any) {
-        if (alive) setLoadError(e.message || "Failed to load");
+      } catch (e: unknown) {
+        if (alive) setLoadError(e instanceof Error ? e.message : "Failed to load");
       } finally {
         if (alive) setLoading(false);
       }
@@ -85,18 +91,12 @@ export default function PropertiesPage() {
     let alive = true;
     (async () => {
       try {
-        setEventsLoading(true);
+        
         const er = await fetch("/api/events", { cache: "no-store" });
-        if (!er.ok) {
-          try { const j = await er.json(); setEventsError(j?.error || "Failed to load events"); } catch { setEventsError("Failed to load events"); }
-          return;
-        }
+        if (!er.ok) { return; }
         const data = await er.json();
         if (alive) setEvents(data || []);
-      } catch {
-        if (alive) setEventsError("Failed to load events");
       } finally {
-        if (alive) setEventsLoading(false);
       }
     })();
     return () => { alive = false; };
@@ -112,7 +112,7 @@ export default function PropertiesPage() {
 
     // Precompute daily ranges (local date boundaries)
     const days: { dStart: Date; dEnd: Date; s: string }[] = [];
-    let cursor = new Date(start);
+    const cursor = new Date(start);
     while (cursor < end) {
       const dStart = new Date(cursor);
       const dEnd = new Date(cursor); dEnd.setDate(dEnd.getDate() + 1);
@@ -123,9 +123,9 @@ export default function PropertiesPage() {
 
     const occupied: Record<string, Set<string>> = {};
     const overlaps = (aS: Date, aE: Date | null, bS: Date, bE: Date) => aS.getTime() < bE.getTime() && bS.getTime() < (aE ?? aS).getTime();
-    for (const ev of events as any[]) {
-      const src = ev?.extendedProps?.source as string | undefined;
-      const pid = ev?.extendedProps?.propertyId as string | undefined;
+    for (const ev of events) {
+      const src = (ev.extendedProps as { source?: string } | undefined)?.source;
+      const pid = (ev.extendedProps as { propertyId?: string } | undefined)?.propertyId;
       if (!pid || src !== "ics") continue;
       const s = new Date(ev.start);
       const e = ev.end ? new Date(ev.end) : null;
@@ -178,8 +178,9 @@ export default function PropertiesPage() {
       if (!res.ok) throw new Error(json.error || "Failed to create");
       if (json.data) setItems((prev) => [json.data!, ...prev]);
       setForm({ name: "", icals: [""], submitting: false, error: null });
-    } catch (e: any) {
-      setForm((f) => ({ ...f, submitting: false, error: e.message || "Failed to create" }));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to create";
+      setForm((f) => ({ ...f, submitting: false, error: msg }));
     }
   }
 
@@ -224,8 +225,8 @@ export default function PropertiesPage() {
       if (!res.ok) throw new Error(json.error || "Failed to update");
       setItems((prev) => prev.map(p => p.id === id ? (json.data as PropertyItem) : p));
       cancelEdit();
-    } catch (e: any) {
-      setEditError(e.message || "Failed to update");
+    } catch (e: unknown) {
+      setEditError(e instanceof Error ? e.message : "Failed to update");
     } finally {
       setEditSaving(false);
     }
@@ -238,8 +239,9 @@ export default function PropertiesPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to delete");
       setItems((prev) => prev.filter(p => p.id !== id));
-    } catch (e) {
-      alert((e as any).message || "Failed to delete");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to delete";
+      alert(msg);
     }
   }
 
@@ -259,13 +261,14 @@ export default function PropertiesPage() {
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="e.g. Beach House"
+            data-tour-id="prop-name-input"
           />
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="block text-sm font-medium">iCal links (up to 5)</label>
-            <button type="button" onClick={addIcalField} disabled={!canAddMoreIcals} className="text-xs px-2 py-1 rounded bg-blue-600 text-white disabled:opacity-50">Add link</button>
+            <button type="button" onClick={addIcalField} disabled={!canAddMoreIcals} className="text-xs px-2 py-1 rounded bg-blue-600 text-white disabled:opacity-50" data-tour-id="add-ical-btn">Add link</button>
           </div>
           {form.icals.map((val, idx) => (
             <div key={idx} className="flex gap-2">
@@ -275,6 +278,7 @@ export default function PropertiesPage() {
                 value={val}
                 onChange={(e) => setForm((f) => ({ ...f, icals: f.icals.map((v, i) => i === idx ? e.target.value : v) }))}
                 placeholder="https://..."
+                data-tour-id={idx === 0 ? "prop-ical-input" : undefined}
               />
               <button type="button" onClick={() => removeIcalField(idx)} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700">Remove</button>
             </div>
@@ -282,7 +286,7 @@ export default function PropertiesPage() {
         </div>
 
         {form.error && <p className="text-sm text-red-600">{form.error}</p>}
-        <button type="submit" disabled={form.submitting} className="px-4 py-2 rounded bg-green-600 text-white disabled:opacity-50">
+        <button type="submit" disabled={form.submitting} className="px-4 py-2 rounded bg-green-600 text-white disabled:opacity-50" data-tour-id="prop-add-btn">
           {form.submitting ? "Saving..." : "Add property"}
         </button>
       </form>

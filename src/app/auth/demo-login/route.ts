@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       return NextResponse.redirect(new URL("/login?error=demo_failed", baseUrl));
     }
-    return NextResponse.redirect(new URL("/dashboard", baseUrl));
+    return NextResponse.redirect(new URL("/dashboard?demo=1", baseUrl));
   } catch {
     return NextResponse.redirect(new URL("/login?error=demo_failed", baseUrl));
   }
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     if (error) {
       return NextResponse.redirect(new URL("/login?error=demo_failed", baseUrl));
     }
-    return NextResponse.redirect(new URL("/dashboard", baseUrl));
+    return NextResponse.redirect(new URL("/dashboard?demo=1", baseUrl));
   } catch {
     return NextResponse.redirect(new URL("/login?error=demo_failed", baseUrl));
   }

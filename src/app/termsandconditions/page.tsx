@@ -44,6 +44,8 @@ export default function TermsAndConditionsPage() {
           <li>We are not responsible for losses caused by OTA update delays.</li>
           <li>We are not responsible for incorrect or altered iCal feeds from OTAs.</li>
           <li>We are not responsible for double bookings resulting from OTA-side issues.</li>
+          <li>In no event shall iCalSync, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the service.</li>
+          <li>We provide a calendar synchronization service for property managers. We are not responsible for the accuracy of the data provided from third-party calendar providers. While we strive to prevent double bookings, we are not liable for any financial loss or damages resulting from scheduling errors.</li>
         </ul>
         <p className="text-sm text-gray-700 dark:text-gray-300">Our service is a supportive tool, not an official OTA integration.</p>
       </section>

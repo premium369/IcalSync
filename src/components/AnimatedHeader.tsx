@@ -107,15 +107,17 @@ export default function AnimatedHeader({ isLoggedIn }: { isLoggedIn: boolean }) 
             <Link href="/" className={compact ? "font-semibold" : "font-semibold dark:text-white"}>Ical Sync</Link>
           </div>
           <nav className="flex items-center gap-1.5 sm:gap-2.5 text-sm pr-3 sm:pr-4">
-            {/* Desktop full nav when not compact or scrolling up */}
-            {!isMobile && !(compact && isScrollingDown) && !inDashboard && (
-              <>
-                <Link href="/#features" className="hidden md:inline hover:underline dark:text-white/90">Features</Link>
-                <Link href="/#how-it-works" className="hidden md:inline hover:underline dark:text-white/90">How it works</Link>
-                <Link href="/contactus" className="hidden md:inline hover:underline dark:text-white/90">Contact</Link>
-              </>
-            )}
-            {!isMobile && !(compact && isScrollingDown) && <ThemeToggle />}
+          {/* Desktop full nav when not compact or scrolling up */}
+          {!isMobile && !(compact && isScrollingDown) && !inDashboard && (
+            <>
+              <Link href="/#features" className="hidden md:inline hover:underline dark:text-white/90">Features</Link>
+              <Link href="/#how-it-works" className="hidden md:inline hover:underline dark:text-white/90">How it works</Link>
+              <Link href="/contactus" className="hidden md:inline hover:underline dark:text-white/90">Contact</Link>
+            </>
+          )}
+          {!isMobile && !(compact && isScrollingDown) && <ThemeToggle />}
+
+          {isMobile && <ThemeToggle className="mr-1" />}
 
             {/* Minimal nav while scrolling down (desktop) */}
             {!isMobile && compact && isScrollingDown && (

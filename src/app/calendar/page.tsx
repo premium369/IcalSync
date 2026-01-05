@@ -601,6 +601,7 @@ export default function CalendarPage() {
             className="px-2 py-1 rounded-md border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-sm min-w-[180px] focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedPropertyId ?? ""}
             onChange={onChangeProperty}
+            data-tour-id="calendar-property-select"
           >
             <option value="">All properties</option>
             {properties.map((p) => (

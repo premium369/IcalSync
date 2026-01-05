@@ -4,9 +4,11 @@ import { createClient as createBrowserSupabase } from "@/lib/supabase-browser";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ThemeMinimal } from "@supabase/auth-ui-shared";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Appearance } from "@supabase/auth-ui-shared";
 
 function LoginPageInner() {
-  const [supabase] = useState(() => createBrowserSupabase());
+  const [supabase] = useState<SupabaseClient>(() => createBrowserSupabase());
   const [redirected, setRedirected] = useState(false);
   const params = useSearchParams();
   const error = params.get("error");
@@ -54,21 +56,27 @@ function LoginPageInner() {
 
         {/* Minimal, Android-working Supabase Auth UI (email + password only) */}
         <Auth
-          supabaseClient={supabase as any}
+          supabaseClient={supabase}
           view="sign_in"
           providers={[]}
           magicLink={false}
-          redirectTo={typeof window !== "undefined" ? window.location.origin : undefined}
+          redirectTo={
+            (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SITE_URL)
+              ? process.env.NEXT_PUBLIC_SITE_URL
+              : typeof window !== "undefined"
+                ? window.location.origin
+                : undefined
+          }
           appearance={
             {
               theme: ThemeMinimal,
               variables: {
                 default: {
                   colors: {
-                    brand: "#2563eb", // blue-600
-                    brandAccent: "#1d4ed8", // blue-700
+                    brand: "#2563eb",
+                    brandAccent: "#1d4ed8",
                     background: "#ffffff",
-                    text: "#111827", // gray-900
+                    text: "#111827",
                     inputBackground: "#ffffff",
                     inputText: "#111827",
                     anchorText: "#2563eb",
@@ -77,8 +85,8 @@ function LoginPageInner() {
                 },
                 dark: {
                   colors: {
-                    brand: "#60a5fa", // blue-400
-                    brandAccent: "#3b82f6", // blue-500
+                    brand: "#60a5fa",
+                    brandAccent: "#3b82f6",
                   },
                 },
               },
@@ -89,7 +97,7 @@ function LoginPageInner() {
                 button: { borderRadius: "0.375rem" },
               },
               className: "supabase-auth",
-            } as any
+            } as Appearance
           }
         />
 
