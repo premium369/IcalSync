@@ -174,7 +174,14 @@ export default function PropertiesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, icalUrls })
       });
-      const json: ApiOneResponse = await res.json();
+      const text = await res.text();
+      let json: ApiOneResponse;
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(text.slice(0, 100) || `Error ${res.status}`);
+      }
+
       if (!res.ok) throw new Error(json.error || "Failed to create");
       if (json.data) setItems((prev) => [json.data!, ...prev]);
       setForm({ name: "", icals: [""], submitting: false, error: null });
@@ -221,7 +228,14 @@ export default function PropertiesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, icalUrls })
       });
-      const json: ApiOneResponse = await res.json();
+      const text = await res.text();
+      let json: ApiOneResponse;
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(text.slice(0, 100) || `Error ${res.status}`);
+      }
+
       if (!res.ok) throw new Error(json.error || "Failed to update");
       setItems((prev) => prev.map(p => p.id === id ? (json.data as PropertyItem) : p));
       cancelEdit();
@@ -236,7 +250,14 @@ export default function PropertiesPage() {
     if (!confirm("Delete this property? This cannot be undone.")) return;
     try {
       const res = await fetch(`/api/properties/${id}`, { method: "DELETE" });
-      const json = await res.json();
+      const text = await res.text();
+      let json;
+      try {
+        json = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(text.slice(0, 100) || `Error ${res.status}`);
+      }
+
       if (!res.ok) throw new Error(json.error || "Failed to delete");
       setItems((prev) => prev.filter(p => p.id !== id));
     } catch (e: unknown) {
