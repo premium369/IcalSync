@@ -5,7 +5,6 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ThemeMinimal } from "@supabase/auth-ui-shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Appearance } from "@supabase/auth-ui-shared";
 
 function LoginPageInner() {
   const [supabase] = useState<SupabaseClient>(() => createBrowserSupabase());
@@ -97,8 +96,9 @@ function LoginPageInner() {
                 button: { borderRadius: "0.375rem" },
               },
               className: "supabase-auth",
-            } as Appearance
-          }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              } as any
+            }
         />
 
         <div className="mt-4">
