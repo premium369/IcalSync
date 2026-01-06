@@ -75,20 +75,23 @@ export async function getUsers() {
   // 2. Fetch plans from user_plans
   const { data: userPlans } = await serviceClient
     .from("user_plans")
-    .select("user_id, plan");
+    .select("user_id, plan, created_at");
 
   // Map plans to users
   const planMap = new Map();
   if (userPlans) {
-      userPlans.forEach((up: any) => planMap.set(up.user_id, up.plan));
+      userPlans.forEach((up: any) => planMap.set(up.user_id, { name: up.plan, startedAt: up.created_at ? new Date(up.created_at) : null }));
   }
 
-  return users.map((u: any) => ({
-      ...u,
-      createdAt: new Date(u.created_at),
-      updatedAt: u.updated_at ? new Date(u.updated_at) : null,
-      plan: { name: planMap.get(u.id) || "basic" }
-  }));
+  return users.map((u: any) => {
+      const planData = planMap.get(u.id) || { name: "basic", startedAt: null };
+      return {
+        ...u,
+        createdAt: new Date(u.created_at),
+        updatedAt: u.updated_at ? new Date(u.updated_at) : null,
+        plan: planData
+      };
+  });
 }
 
 export async function updateUserStatus(userId: string, status: "pending" | "active" | "rejected" | "suspended") {

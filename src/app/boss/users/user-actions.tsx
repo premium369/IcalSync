@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -12,11 +11,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import { updateUserStatus } from "@/actions/admin";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { ChangePlanDialog } from "@/components/change-plan-dialog";
 
-export function UserStatusAction({ userId, currentStatus }: { userId: string, currentStatus: string }) {
+interface Plan {
+    id: string;
+    name: string;
+}
+
+export function UserActions({ userId, currentStatus, currentPlanId, plans }: { userId: string, currentStatus: string, currentPlanId?: string, plans: Plan[] }) {
   const [isPending, startTransition] = useTransition();
+  const [showPlanDialog, setShowPlanDialog] = useState(false);
 
   const handleStatusChange = (status: "active" | "suspended" | "rejected") => {
     if (confirm(`Are you sure you want to mark this user as ${status}?`)) {
@@ -31,34 +37,45 @@ export function UserStatusAction({ userId, currentStatus }: { userId: string, cu
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Open menu</span>
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuItem asChild>
-            <Link href={`/boss/users/${userId}`} className="cursor-pointer">
-                View Profile & Plan
-            </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigator.clipboard.writeText(userId)}>
-          Copy ID
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => handleStatusChange("active")}>
-          Approve / Activate
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleStatusChange("suspended")}>
-          Suspend
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleStatusChange("rejected")}>
-          Reject
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+        <ChangePlanDialog 
+            userId={userId} 
+            currentPlanId={currentPlanId} 
+            plans={plans} 
+            open={showPlanDialog} 
+            onOpenChange={setShowPlanDialog} 
+        />
+        <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => setShowPlanDialog(true)}>
+                Change Plan
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+                <Link href={`/boss/users/${userId}`} className="cursor-pointer">
+                    View Profile
+                </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(userId)}>
+            Copy ID
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleStatusChange("active")}>
+            Set Status: Active
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatusChange("suspended")}>
+            Set Status: Suspended
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatusChange("rejected")}>
+            Set Status: Rejected
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+        </DropdownMenu>
+    </>
   );
 }

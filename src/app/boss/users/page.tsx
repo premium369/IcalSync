@@ -20,10 +20,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import { UserStatusAction } from "./user-actions"; // Client component for actions
+import { UserActions } from "./user-actions";
+import { plansCatalog } from "@/lib/plans";
 
 export default async function UsersPage() {
   const users = await getUsers();
+  const plans = plansCatalog.map(p => ({ id: p.id, name: p.title }));
 
   return (
     <div className="space-y-6">
@@ -40,9 +42,10 @@ export default async function UsersPage() {
               <TableHead>Status</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Plan</TableHead>
+              <TableHead>Plan Started</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead>Last Updated</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right">Manage</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -67,11 +70,21 @@ export default async function UsersPage() {
                   </Badge>
                 </TableCell>
                 <TableCell>{user.role}</TableCell>
-                <TableCell>{user.plan?.name || "None"}</TableCell>
+                <TableCell>
+                    {plansCatalog.find(p => p.id === user.plan?.name)?.title || user.plan?.name || "None"}
+                </TableCell>
+                <TableCell>
+                    {user.plan?.startedAt ? user.plan.startedAt.toLocaleDateString() : "-"}
+                </TableCell>
                 <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
                 <TableCell>{user.updatedAt ? user.updatedAt.toLocaleDateString() : "-"}</TableCell>
                 <TableCell className="text-right">
-                  <UserStatusAction userId={user.id} currentStatus={user.status} />
+                  <UserActions 
+                    userId={user.id} 
+                    currentStatus={user.status} 
+                    currentPlanId={user.plan?.name}
+                    plans={plans}
+                  />
                 </TableCell>
               </TableRow>
             ))}

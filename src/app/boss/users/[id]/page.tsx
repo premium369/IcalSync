@@ -3,8 +3,9 @@ import { createServiceClient } from "@/lib/supabase-server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { UserStatusAction } from "../user-actions";
+import { UserActions } from "../user-actions";
 import { ChangePlanDialog } from "@/components/change-plan-dialog";
+import { plansCatalog } from "@/lib/plans";
 
 interface Payment {
   id: string;
@@ -33,14 +34,17 @@ async function getUser(id: string) {
   // Fetch plan from user_plans
   const { data: userPlan } = await supabase
     .from("user_plans")
-    .select("plan")
+    .select("plan, created_at")
     .eq("user_id", id)
     .single();
 
   return {
     ...data,
     createdAt: new Date(data.created_at),
-    plan: { name: userPlan?.plan || "basic" },
+    plan: { 
+        name: userPlan?.plan || "basic",
+        startedAt: userPlan?.created_at ? new Date(userPlan.created_at) : null
+    },
     planId: userPlan?.plan || "basic",
     subscription: data.subscription ? {
         ...data.subscription,
@@ -58,18 +62,10 @@ async function getUser(id: string) {
   };
 }
 
-async function getPlans() {
-  // Return hardcoded plans
-  return [
-      { id: "basic", name: "Starter" },
-      { id: "super_host", name: "Super Host" },
-      { id: "custom", name: "Custom" }
-  ];
-}
-
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [user, plans] = await Promise.all([getUser(id), getPlans()]);
+  const user = await getUser(id);
+  const plans = plansCatalog.map(p => ({ id: p.id, name: p.title }));
 
   if (!user) {
     return <div>User not found</div>;
@@ -88,7 +84,12 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
         <div className="flex gap-2">
-            <UserStatusAction userId={user.id} currentStatus={user.status} />
+            <UserActions 
+                userId={user.id} 
+                currentStatus={user.status} 
+                currentPlanId={user.planId}
+                plans={plans}
+            />
         </div>
       </div>
 
@@ -100,20 +101,30 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           <CardContent className="space-y-4">
             <div>
               <div className="text-sm font-medium text-muted-foreground">Current Plan</div>
-              <div className="text-lg font-semibold">{user.plan?.name || "No Plan"}</div>
+              <div className="text-lg font-semibold">
+                {plansCatalog.find(p => p.id === user.plan?.name)?.title || user.plan?.name || "No Plan"}
+              </div>
             </div>
-            {user.subscription && (
-              <>
+            
+            {/* Show Plan Start Date from user_plans if available, otherwise fallback to subscription */}
+            {(user.plan?.startedAt || user.subscription) && (
                 <div>
-                  <div className="text-sm font-medium text-muted-foreground">Start Date</div>
-                  <div>{user.subscription.startDate.toLocaleDateString()}</div>
+                  <div className="text-sm font-medium text-muted-foreground">Plan Started</div>
+                  <div>
+                    {user.plan?.startedAt 
+                        ? user.plan.startedAt.toLocaleDateString() 
+                        : user.subscription?.startDate.toLocaleDateString()}
+                  </div>
                 </div>
+            )}
+            
+            {user.subscription?.endDate && (
                 <div>
                   <div className="text-sm font-medium text-muted-foreground">End Date</div>
-                  <div>{user.subscription.endDate?.toLocaleDateString() || "N/A"}</div>
+                  <div>{user.subscription.endDate.toLocaleDateString()}</div>
                 </div>
-              </>
             )}
+
             <ChangePlanDialog userId={user.id} currentPlanId={user.planId || undefined} plans={plans} />
           </CardContent>
         </Card>

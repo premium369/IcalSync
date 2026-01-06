@@ -19,8 +19,24 @@ interface Plan {
   name: string;
 }
 
-export function ChangePlanDialog({ userId, currentPlanId, plans }: { userId: string, currentPlanId?: string, plans: Plan[] }) {
-  const [open, setOpen] = useState(false);
+export function ChangePlanDialog({ 
+    userId, 
+    currentPlanId, 
+    plans,
+    open: controlledOpen,
+    onOpenChange: controlledOnOpenChange
+}: { 
+    userId: string, 
+    currentPlanId?: string, 
+    plans: Plan[],
+    open?: boolean,
+    onOpenChange?: (open: boolean) => void
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
+
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,9 +56,11 @@ export function ChangePlanDialog({ userId, currentPlanId, plans }: { userId: str
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">Change Plan</Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+            <Button variant="outline" className="w-full">Change Plan</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Change User Plan</DialogTitle>
