@@ -61,6 +61,13 @@ function LoginPageInner() {
         <h1 className="text-2xl font-semibold mb-1 text-gray-900 dark:text-gray-100">Sign in</h1>
         <p className="text-sm mb-6 text-gray-600 dark:text-gray-300">Welcome back. Please sign in to continue.</p>
 
+        {/* Compute production-safe site URL fallback */}
+        {/* Prefer env; if it's localhost or missing, fallback to production domain */}
+        {/* In browser, window.location.origin is used only when env missing */}
+        {/* Server-side render uses production fallback */}
+        {/* This ensures email links always redirect to /login on the correct domain */}
+        {null}
+
         {error && (
           <div className="mb-4 rounded-md border border-red-300/60 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300 px-3 py-2 text-sm" aria-live="polite">
             {error === "demo_not_configured" && "Demo login is not configured. Set DEMO_EMAIL and DEMO_PASSWORD in .env.local."}
@@ -69,17 +76,28 @@ function LoginPageInner() {
         )}
 
         {/* Minimal, Android-working Supabase Auth UI (email + password only) */}
+        {/* Compute siteUrl dynamically */}
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        {(() => {
+          const env = process.env.NEXT_PUBLIC_SITE_URL;
+          const siteUrl =
+            env && !env.includes("localhost")
+              ? env
+              : typeof window !== "undefined"
+                ? window.location.origin
+                : "https://www.icalsync.app";
+          (window as any).__SITE_URL__ = siteUrl;
+          return null;
+        })()}
         <Auth
           supabaseClient={supabase}
           view={view}
           providers={[]}
           magicLink={false}
           redirectTo={
-            (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SITE_URL)
-              ? `${process.env.NEXT_PUBLIC_SITE_URL}/login`
-              : typeof window !== "undefined"
-                ? `${window.location.origin}/login`
-                : undefined
+            (typeof window !== "undefined" && (window as any).__SITE_URL__)
+              ? `${(window as any).__SITE_URL__}/login`
+              : "https://www.icalsync.app/login"
           }
           appearance={
             {

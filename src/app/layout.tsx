@@ -8,7 +8,7 @@ import AnimatedHeader from "@/components/AnimatedHeader";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.icalsync.app"),
   title: {
     default: "Ical Sync — Best calendar manager for your property",
     template: "%s • Ical Sync",
