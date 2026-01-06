@@ -100,75 +100,39 @@ export async function updateUserStatus(userId: string, status: "pending" | "acti
       action: "UPDATE_USER_STATUS",
       admin_id: dbUser.id,
       target_id: userId,
-      details: { status },
+      details: { status }
   });
 
   revalidatePath("/boss/users");
+  revalidatePath(`/boss/users/${userId}`);
 }
 
-export async function updateUserPlan(userId: string, planId: string) {
+export async function updateUserPlan(userId: string, plan: string) {
   const { dbUser, serviceClient } = await checkAdmin();
 
-  // Check if row exists in user_plans
-  const { data: existing } = await serviceClient.from("user_plans").select("*").eq("user_id", userId).single();
+  // Upsert into user_plans
+  // We assume user_plans has (user_id, plan) columns. 
+  // If it has a primary key or constraint, upsert works.
+  // user_plans table structure: likely user_id (PK/FK), plan (text).
   
-  if (existing) {
-      await serviceClient
-        .from("user_plans")
-        .update({ plan: planId })
-        .eq("user_id", userId);
-  } else {
-      await serviceClient
-        .from("user_plans")
-        .insert({ user_id: userId, plan: planId });
+  const { error } = await serviceClient
+      .from("user_plans")
+      .upsert({ user_id: userId, plan }, { onConflict: "user_id" });
+
+  if (error) {
+      console.error("Failed to update user plan", error);
+      throw new Error("Failed to update user plan");
   }
 
   await serviceClient.from("audit_logs").insert({
       action: "UPDATE_USER_PLAN",
       admin_id: dbUser.id,
       target_id: userId,
-      details: { plan: planId },
+      details: { plan }
   });
 
   revalidatePath("/boss/users");
-}
-
-export async function createPlan(data: { name: string; maxCalendars: number; syncFrequency: number }) {
-    const { dbUser, serviceClient } = await checkAdmin();
-    
-    await serviceClient.from("plans").insert({
-        name: data.name,
-        max_calendars: data.maxCalendars,
-        sync_frequency: data.syncFrequency,
-    });
-
-    await serviceClient.from("audit_logs").insert({
-        action: "CREATE_PLAN",
-        admin_id: dbUser.id,
-        details: data,
-    });
-
-    revalidatePath("/boss/plans");
-}
-
-export async function updatePlan(planId: string, data: { name: string; maxCalendars: number; syncFrequency: number; isActive: boolean }) {
-  const { dbUser, serviceClient } = await checkAdmin();
-
-  await serviceClient.from("plans").update({
-      name: data.name,
-      max_calendars: data.maxCalendars,
-      sync_frequency: data.syncFrequency,
-      is_active: data.isActive,
-      updated_at: new Date().toISOString(),
-  }).eq("id", planId);
-
-  await serviceClient.from("audit_logs").insert({
-      action: "UPDATE_PLAN",
-      admin_id: dbUser.id,
-      details: { planId, ...data },
-  });
-
-  revalidatePath("/boss/plans");
+  revalidatePath(`/boss/users/${userId}`);
 }
 
 export async function addPayment(data: { userId: string; amount: number; mode: string; status?: string; notes?: string }) {

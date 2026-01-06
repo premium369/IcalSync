@@ -20,6 +20,12 @@ const routes = [
     color: "text-violet-500",
   },
   {
+    label: "Requests",
+    icon: Users, // Using Users icon but maybe distinct?
+    href: "/boss/requests",
+    color: "text-yellow-500",
+  },
+  {
     label: "Plans",
     icon: FileText,
     href: "/boss/plans",

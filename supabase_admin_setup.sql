@@ -55,20 +55,20 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
 );
 
 -- Trigger to handle new user signup
-CREATE OR REPLACE FUNCTION public.handle_new_user() 
+CREATE OR REPLACE FUNCTION public.handle_new_user_admin_sync() 
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.users (id, email, role, status)
-  VALUES (new.id, new.email, 'user', 'active');
+  VALUES (new.id, new.email, 'user', 'pending'); -- Default to pending for approval flow
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger execution
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
+DROP TRIGGER IF EXISTS on_auth_user_created_admin_sync ON auth.users;
+CREATE TRIGGER on_auth_user_created_admin_sync
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user_admin_sync();
 
 -- Backfill existing users from auth.users to public.users
 INSERT INTO public.users (id, email, role, status)
