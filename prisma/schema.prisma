@@ -1,0 +1,115 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum UserStatus {
+  pending
+  active
+  rejected
+  suspended
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  role      Role     @default(user)
+  status    UserStatus @default(active)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  planId    String?
+  plan      Plan?    @relation(fields: [planId], references: [id])
+  
+  subscription Subscription?
+  payments     Payment[]
+  adminNotes   AdminNote[]
+  auditLogs    AuditLog[] // Logs where this user is the target
+
+  @@map("users") // Map to 'users' table in DB
+}
+
+model Plan {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  maxCalendars  Int      @default(1)
+  syncFrequency Int      @default(60) // in minutes
+  isActive      Boolean  @default(true)
+  
+  users         User[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("plans")
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  
+  startDate DateTime
+  endDate   DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  amount      Float
+  currency    String   @default("USD")
+  mode        String   // UPI, Bank, Cash, Trial
+  status      String   @default("completed")
+  start_date  DateTime?
+  end_date    DateTime?
+  notes       String?
+  
+  createdAt   DateTime @default(now())
+
+  @@map("payments")
+}
+
+model AdminNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  content   String
+  adminId   String
+  
+  createdAt DateTime @default(now())
+
+  @@map("admin_notes")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  adminId   String
+  targetId  String?
+  details   Json?
+  
+  createdAt DateTime @default(now())
+  
+  // Optional: Relation to user if targetId matches a user
+  user      User?    @relation(fields: [targetId], references: [id])
+
+  @@map("audit_logs")
+}
