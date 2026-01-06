@@ -159,3 +159,77 @@ export async function addPayment(data: { userId: string; amount: number; mode: s
   revalidatePath("/boss/users");
   revalidatePath("/boss/payments");
 }
+
+export async function getUpgradeRequests() {
+  const { serviceClient } = await checkAdmin();
+  const { data, error } = await serviceClient
+    .from("upgrade_requests")
+    .select("*")
+    .order("created_at", { ascending: false });
+  
+  if (error) {
+    console.error("Error fetching upgrade requests:", error);
+    return [];
+  }
+  return data;
+}
+
+export async function approveUpgradeRequest(requestId: string, userId: string, plan: string) {
+    const { serviceClient, dbUser } = await checkAdmin();
+    // 1. Update user plan
+    const { error: planError } = await serviceClient
+        .from("user_plans")
+        .upsert({ user_id: userId, plan }, { onConflict: "user_id" });
+    
+    if (planError) throw new Error(planError.message);
+
+    // 2. Update request status
+    const { error: reqError } = await serviceClient
+        .from("upgrade_requests")
+        .update({ status: "approved" })
+        .eq("id", requestId);
+    
+    if (reqError) throw new Error(reqError.message);
+
+    // 3. Log it
+    await serviceClient.from("audit_logs").insert({
+        action: "APPROVE_UPGRADE_REQUEST",
+        admin_id: dbUser.id,
+        target_id: userId,
+        details: { requestId, plan }
+    });
+
+    revalidatePath("/boss/requests");
+    revalidatePath("/boss/users");
+}
+
+export async function denyUpgradeRequest(requestId: string) {
+    const { serviceClient, dbUser } = await checkAdmin();
+    const { error } = await serviceClient
+        .from("upgrade_requests")
+        .update({ status: "denied" })
+        .eq("id", requestId);
+    
+    if (error) throw new Error(error.message);
+
+    // Log it
+    await serviceClient.from("audit_logs").insert({
+        action: "DENY_UPGRADE_REQUEST",
+        admin_id: dbUser.id,
+        target_id: requestId, // requestId as target since user might not be affected directly
+        details: { requestId }
+    });
+
+    revalidatePath("/boss/requests");
+}
+
+export async function markRequestReviewed(requestId: string) {
+    const { serviceClient } = await checkAdmin();
+    const { error } = await serviceClient
+        .from("upgrade_requests")
+        .update({ status: "reviewed" })
+        .eq("id", requestId);
+    
+    if (error) throw new Error(error.message);
+    revalidatePath("/boss/requests");
+}
