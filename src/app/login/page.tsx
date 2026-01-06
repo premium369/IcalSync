@@ -9,8 +9,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 function LoginPageInner() {
   const [supabase] = useState<SupabaseClient>(() => createBrowserSupabase());
   const [redirected, setRedirected] = useState(false);
+  const [view, setView] = useState<"sign_in" | "update_password">("sign_in");
   const params = useSearchParams();
   const error = params.get("error");
+  const code = params.get("code");
 
   // If already signed in, send to dashboard
   useEffect(() => {
@@ -27,12 +29,25 @@ function LoginPageInner() {
     };
   }, [supabase, redirected]);
 
+  useEffect(() => {
+    (async () => {
+      if (code) {
+        try {
+          await supabase.auth.exchangeCodeForSession(code);
+        } catch {
+        }
+      }
+    })();
+  }, [supabase, code]);
+
   // On new sign-in, send to dashboard
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === "SIGNED_IN" && !redirected) {
         setRedirected(true);
         window.location.href = "/dashboard";
+      } else if (event === "PASSWORD_RECOVERY") {
+        setView("update_password");
       }
     });
     return () => {
@@ -56,14 +71,14 @@ function LoginPageInner() {
         {/* Minimal, Android-working Supabase Auth UI (email + password only) */}
         <Auth
           supabaseClient={supabase}
-          view="sign_in"
+          view={view}
           providers={[]}
           magicLink={false}
           redirectTo={
             (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SITE_URL)
-              ? process.env.NEXT_PUBLIC_SITE_URL
+              ? `${process.env.NEXT_PUBLIC_SITE_URL}/login`
               : typeof window !== "undefined"
-                ? window.location.origin
+                ? `${window.location.origin}/login`
                 : undefined
           }
           appearance={
