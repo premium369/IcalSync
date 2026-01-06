@@ -1,5 +1,5 @@
 
-import { getUpgradeRequests, getUsers } from "@/actions/admin";
+import { getUpgradeRequests } from "@/actions/admin";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -10,17 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RequestActions } from "./request-actions";
-import { UserActions } from "../users/user-actions";
-import { plansCatalog } from "@/lib/plans";
 
 export default async function RequestsPage() {
-  const [upgradeRequests, allUsers] = await Promise.all([
-    getUpgradeRequests(),
-    getUsers()
-  ]);
-
-  const pendingUsers = allUsers.filter((u: any) => u.status === "pending");
-  const plans = plansCatalog.map(p => ({ id: p.id, name: p.title }));
+  const upgradeRequests = await getUpgradeRequests();
 
   return (
     <div className="space-y-8">
@@ -75,55 +67,7 @@ export default async function RequestsPage() {
         </div>
       </div>
 
-      {/* Pending Users Section */}
-      <div className="space-y-4">
-        <div>
-            <h2 className="text-2xl font-bold tracking-tight">New Account Requests</h2>
-            <p className="text-muted-foreground">New users waiting for approval.</p>
-        </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined At</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pendingUsers.length === 0 ? (
-                  <TableRow>
-                      <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
-                          No pending new accounts.
-                      </TableCell>
-                  </TableRow>
-              ) : (
-                  pendingUsers.map((user: any) => (
-                  <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.email}</TableCell>
-                      <TableCell>
-                      <Badge variant="warning">
-                          {user.status}
-                      </Badge>
-                      </TableCell>
-                      <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <UserActions 
-                            userId={user.id} 
-                            currentStatus={user.status} 
-                            currentPlanId={user.plan?.name}
-                            plans={plans}
-                        />
-                      </TableCell>
-                  </TableRow>
-                  ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
     </div>
   );
 }
+
