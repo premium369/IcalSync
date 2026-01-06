@@ -9,11 +9,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { UserStatusAction } from "../users/user-actions";
+import { UserActions } from "../users/user-actions";
+import { plansCatalog } from "@/lib/plans";
 
 export default async function RequestsPage() {
   const allUsers = await getUsers();
   const pendingUsers = allUsers.filter(u => u.status === "pending");
+  const plans = plansCatalog.map(p => ({ id: p.id, name: p.title }));
 
   return (
     <div className="space-y-6">
@@ -28,7 +30,7 @@ export default async function RequestsPage() {
               <TableHead>Email</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Requested At</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right">Manage</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -49,7 +51,12 @@ export default async function RequestsPage() {
                     </TableCell>
                     <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
-                    <UserStatusAction userId={user.id} currentStatus={user.status} />
+                    <UserActions 
+                        userId={user.id} 
+                        currentStatus={user.status}
+                        currentPlanId={user.plan?.name}
+                        plans={plans}
+                    />
                     </TableCell>
                 </TableRow>
                 ))
