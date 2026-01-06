@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
-import { updateUserStatus } from "@/actions/admin";
+import { updateUserStatus, updateUserPlan } from "@/actions/admin";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { ChangePlanDialog } from "@/components/change-plan-dialog";
@@ -36,6 +36,18 @@ export function UserActions({ userId, currentStatus, currentPlanId, plans }: { u
     }
   };
 
+  const handleStopSubscription = () => {
+      if (confirm("Are you sure you want to stop the subscription and downgrade to Starter?")) {
+          startTransition(async () => {
+              try {
+                  await updateUserPlan(userId, "basic");
+              } catch (e) {
+                  alert("Failed to stop subscription");
+              }
+          });
+      }
+  };
+
   return (
     <>
         <ChangePlanDialog 
@@ -56,6 +68,11 @@ export function UserActions({ userId, currentStatus, currentPlanId, plans }: { u
             <DropdownMenuItem onSelect={() => setShowPlanDialog(true)}>
                 Change Plan
             </DropdownMenuItem>
+            {currentPlanId !== "basic" && (
+                <DropdownMenuItem onClick={handleStopSubscription} className="text-red-600 focus:text-red-600">
+                    Stop Subscription
+                </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
                 <Link href={`/boss/users/${userId}`} className="cursor-pointer">
                     View Profile
