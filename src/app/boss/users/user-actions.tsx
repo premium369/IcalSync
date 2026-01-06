@@ -13,6 +13,7 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { updateUserStatus } from "@/actions/admin";
 import { useTransition } from "react";
+import Link from "next/link";
 
 export function UserStatusAction({ userId, currentStatus }: { userId: string, currentStatus: string }) {
   const [isPending, startTransition] = useTransition();
@@ -39,6 +40,11 @@ export function UserStatusAction({ userId, currentStatus }: { userId: string, cu
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+            <Link href={`/boss/users/${userId}`} className="cursor-pointer">
+                View Profile & Plan
+            </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigator.clipboard.writeText(userId)}>
           Copy ID
         </DropdownMenuItem>

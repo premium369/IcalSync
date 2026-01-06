@@ -41,13 +41,18 @@ export default async function UsersPage() {
               <TableHead>Role</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Joined</TableHead>
+              <TableHead>Last Updated</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {users.map((user) => (
               <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.email}</TableCell>
+                <TableCell className="font-medium">
+                    <Link href={`/boss/users/${user.id}`} className="hover:underline">
+                        {user.email}
+                    </Link>
+                </TableCell>
                 <TableCell>
                   <Badge
                     variant={
@@ -64,6 +69,7 @@ export default async function UsersPage() {
                 <TableCell>{user.role}</TableCell>
                 <TableCell>{user.plan?.name || "None"}</TableCell>
                 <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
+                <TableCell>{user.updatedAt ? user.updatedAt.toLocaleDateString() : "-"}</TableCell>
                 <TableCell className="text-right">
                   <UserStatusAction userId={user.id} currentStatus={user.status} />
                 </TableCell>
