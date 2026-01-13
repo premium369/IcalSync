@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { z } from "zod";
-import ical from "node-ical";
+// Cached external events are read from DB (see external_events table)
 
 type EventRow = {
   id: string;
@@ -53,55 +53,28 @@ function detectOta(summary: string | undefined, uid: string | undefined, url?: s
   return undefined;
 }
 
-async function fetchIcsEventsForUser(supabase: any, userId: string, propertyId?: string | null) {
-  // get properties and their icals for user (optionally one property)
-  let query = supabase
-    .from("properties")
-    .select("id, name, property_icals(url)")
+async function readCachedExternalEvents(supabase: any, userId: string, propertyId?: string | null) {
+  let q = supabase
+    .from("external_events")
+    .select("uid, title, start, end, all_day, ota, property_id, feed_url")
     .eq("user_id", userId) as any;
-  if (propertyId) query = query.eq("id", propertyId);
-  const { data: properties, error: pErr } = await query;
-  if (pErr) throw new Error(pErr.message);
-
-  const events: any[] = [];
-
-  // fetch each ICS feed
-  await Promise.all(
-    (properties || []).flatMap((p: any) =>
-      (p.property_icals || []).map(async (i: any) => {
-        try {
-          const data = await ical.async.fromURL(i.url);
-          Object.values(data).forEach((item: any) => {
-            if (item.type !== "VEVENT") return;
-            const start = item.start instanceof Date ? item.start.toISOString() : undefined;
-            const end = item.end instanceof Date ? item.end.toISOString() : undefined;
-            if (!start) return;
-            const ota = detectOta(item.summary, item.uid, i.url);
-            const color = ota ? OTA_COLORS[ota] : OTA_COLORS["manual"];
-            events.push({
-              id: item.uid || `${p.id}-${start}`,
-              title: item.summary || p.name,
-              start,
-              end,
-              allDay: !!item.datetype?.includes("date"),
-              color,
-              extendedProps: {
-                source: "ics",
-                ota,
-                propertyId: p.id,
-                propertyName: p.name,
-                feedUrl: i.url,
-              },
-            });
-          });
-        } catch (e) {
-          // ignore individual feed errors to avoid breaking the whole calendar
-        }
-      })
-    )
-  );
-
-  return events;
+  if (propertyId) q = q.eq("property_id", propertyId);
+  const { data, error } = await q;
+  if (error) return [];
+  return (data || []).map((e: any) => ({
+    id: e.uid,
+    title: e.title,
+    start: e.start,
+    end: e.end ?? undefined,
+    allDay: !!e.all_day,
+    color: e.ota ? OTA_COLORS[e.ota] : OTA_COLORS["manual"],
+    extendedProps: {
+      source: "ics",
+      ota: e.ota,
+      propertyId: e.property_id,
+      feedUrl: e.feed_url,
+    },
+  }));
 }
 
 export async function GET(req: NextRequest) {
@@ -134,10 +107,10 @@ export async function GET(req: NextRequest) {
     extendedProps: { source: "manual", propertyId: e.property_id ?? null },
   }));
 
-  // ics events from property feeds (best-effort)
+  // cached external ics events (best-effort from scheduled sync)
   let icsEvents: any[] = [];
   try {
-    icsEvents = await fetchIcsEventsForUser(supabase, user.id, propertyId);
+    icsEvents = await readCachedExternalEvents(supabase, user.id, propertyId);
   } catch (_e) {
     // ignore
   }

@@ -26,6 +26,40 @@ BEGIN
   END IF;
 END$$;
 
+-- External events cache (parsed from OTA iCal feeds)
+create table if not exists public.external_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  property_id uuid not null references public.properties(id) on delete cascade,
+  uid text not null, -- iCal UID from feed
+  title text not null,
+  start timestamptz not null,
+  "end" timestamptz,
+  all_day boolean,
+  source text not null default 'ics',
+  feed_url text,
+  ota text, -- airbnb, booking, vrbo, etc
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists uq_external_events_property_uid on public.external_events(property_id, uid);
+create index if not exists idx_external_events_user on public.external_events(user_id);
+create index if not exists idx_external_events_property on public.external_events(property_id);
+
+alter table public.external_events enable row level security;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='external_events' AND policyname='Users can view their external events'
+  ) THEN
+    CREATE POLICY "Users can view their external events"
+      ON public.external_events FOR SELECT
+      USING (auth.uid() = user_id);
+  END IF;
+END$$;
+
 DO $$
 BEGIN
   IF NOT EXISTS (

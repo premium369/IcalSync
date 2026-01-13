@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { UserActions } from "../user-actions";
 import { ChangePlanDialog } from "@/components/change-plan-dialog";
 import { plansCatalog } from "@/lib/plans";
+import { PropertySyncActions } from "../property-sync-actions";
 
 interface Payment {
   id: string;
@@ -38,6 +39,22 @@ async function getUser(id: string) {
     .eq("user_id", id)
     .single();
 
+  // Fetch properties for this user
+  const { data: props } = await supabase
+    .from("properties")
+    .select("id, name, created_at, property_icals(url)")
+    .eq("user_id", id);
+  const propertyIds = (props || []).map((p: any) => p.id);
+  // Fetch last sync status
+  let syncMap: Record<string, any> = {};
+  if (propertyIds.length > 0) {
+    const { data: syncs } = await supabase
+      .from("property_syncs")
+      .select("*")
+      .in("property_id", propertyIds);
+    (syncs || []).forEach((s: any) => { syncMap[s.property_id] = s; });
+  }
+
   return {
     ...data,
     createdAt: new Date(data.created_at),
@@ -46,6 +63,18 @@ async function getUser(id: string) {
         startedAt: userPlan?.created_at ? new Date(userPlan.created_at) : null
     },
     planId: userPlan?.plan || "basic",
+    properties: (props || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        createdAt: new Date(p.created_at),
+        icals: (p.property_icals || []).map((i: any) => i.url),
+        sync: syncMap[p.id] ? {
+          lastSyncedAt: syncMap[p.id].last_synced_at ? new Date(syncMap[p.id].last_synced_at) : null,
+          feedsCount: syncMap[p.id].feeds_count || 0,
+          eventsProcessed: syncMap[p.id].events_processed || 0,
+          error: syncMap[p.id].error || null
+        } : null
+    })),
     subscription: data.subscription ? {
         ...data.subscription,
         startDate: new Date(data.subscription.start_date),
@@ -145,6 +174,38 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Properties & Sync</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(!user.properties || user.properties.length === 0) ? (
+            <p className="text-muted-foreground">No properties found.</p>
+          ) : (
+            <div className="space-y-3">
+              {user.properties.map((p: any) => (
+                <div key={p.id} className="flex items-center justify-between border-b pb-3 last:border-none">
+                  <div className="space-y-1">
+                    <div className="font-medium">{p.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      iCal feeds: {p.icals.length}
+                      {" · "}
+                      Last synced: {p.sync?.lastSyncedAt ? p.sync.lastSyncedAt.toLocaleString() : "—"}
+                      {" · "}
+                      Events processed: {p.sync?.eventsProcessed ?? 0}
+                      {p.sync?.error ? (
+                        <span className="text-red-600"> {" · "}Error: {p.sync.error}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <PropertySyncActions propertyId={p.id} />
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -76,3 +76,14 @@ SELECT id, email, 'user', 'active'
 FROM auth.users
 WHERE id NOT IN (SELECT id FROM public.users)
 ON CONFLICT (id) DO NOTHING;
+
+-- Property sync status table (admin observability)
+CREATE TABLE IF NOT EXISTS public.property_syncs (
+  property_id UUID PRIMARY KEY REFERENCES public.properties(id) ON DELETE CASCADE,
+  last_synced_at TIMESTAMP WITH TIME ZONE,
+  feeds_count INT,
+  events_processed INT,
+  error TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
