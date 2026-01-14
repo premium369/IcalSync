@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { z } from "zod";
+import ical from "node-ical";
 // Cached external events are read from DB (see external_events table)
 
 type EventRow = {
@@ -51,6 +52,55 @@ function detectOta(summary: string | undefined, uid: string | undefined, url?: s
   if (text.includes("vrbo") || text.includes("homeaway")) return "vrbo";
   if (text.includes("expedia")) return "expedia";
   return undefined;
+}
+
+async function fetchIcsEventsForUser(supabase: any, userId: string, propertyId?: string | null) {
+  let query = supabase
+    .from("properties")
+    .select("id, name, property_icals(url)")
+    .eq("user_id", userId) as any;
+  if (propertyId) query = query.eq("id", propertyId);
+  const { data: properties, error: pErr } = await query;
+  if (pErr) throw new Error(pErr.message);
+
+  const events: any[] = [];
+
+  await Promise.all(
+    (properties || []).flatMap((p: any) =>
+      (p.property_icals || []).map(async (i: any) => {
+        try {
+          const data = await ical.async.fromURL(i.url);
+          Object.values(data).forEach((item: any) => {
+            if (item.type !== "VEVENT") return;
+            const start = item.start instanceof Date ? item.start.toISOString() : undefined;
+            const end = item.end instanceof Date ? item.end.toISOString() : undefined;
+            if (!start) return;
+            const ota = detectOta(item.summary, item.uid, i.url);
+            const color = ota ? OTA_COLORS[ota] : OTA_COLORS["manual"];
+            events.push({
+              id: item.uid || `${p.id}-${start}`,
+              title: item.summary || p.name,
+              start,
+              end,
+              allDay: !!item.datetype?.includes("date"),
+              color,
+              extendedProps: {
+                source: "ics",
+                ota,
+                propertyId: p.id,
+                propertyName: p.name,
+                feedUrl: i.url,
+              },
+            });
+          });
+        } catch {
+          // ignore individual feed errors
+        }
+      })
+    )
+  );
+
+  return events;
 }
 
 async function readCachedExternalEvents(supabase: any, userId: string, propertyId?: string | null) {
@@ -107,12 +157,19 @@ export async function GET(req: NextRequest) {
     extendedProps: { source: "manual", propertyId: e.property_id ?? null },
   }));
 
-  // cached external ics events (best-effort from scheduled sync)
+  // cached external ics events (best-effort from scheduled sync, with live fallback)
   let icsEvents: any[] = [];
   try {
     icsEvents = await readCachedExternalEvents(supabase, user.id, propertyId);
-  } catch (_e) {
-    // ignore
+    if (!icsEvents.length) {
+      icsEvents = await fetchIcsEventsForUser(supabase, user.id, propertyId);
+    }
+  } catch {
+    try {
+      icsEvents = await fetchIcsEventsForUser(supabase, user.id, propertyId);
+    } catch {
+      icsEvents = [];
+    }
   }
 
   return NextResponse.json([...manualEvents, ...icsEvents]);
