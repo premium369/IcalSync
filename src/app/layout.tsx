@@ -50,9 +50,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
-        {/* Set theme ASAP to avoid white flash on first paint */}
         <Script id="theme-init" strategy="beforeInteractive">
-          {`(function(){try{var d=document.documentElement;var t;try{t=localStorage.getItem('theme')}catch(e){};if(t==='light'||t==='dark'){d.setAttribute('data-theme',t);}else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){d.setAttribute('data-theme','dark');}else{d.setAttribute('data-theme','light');}d.style.colorScheme=d.getAttribute('data-theme');if(d.getAttribute('data-theme')==='dark'){d.classList.add('dark');}else{d.classList.remove('dark');}}catch(e){}})();`}
+          {`(function(){try{var d=document.documentElement;var prefersDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;var next=prefersDark?'dark':'light';d.setAttribute('data-theme',next);d.style.colorScheme=next;if(next==='dark'){d.classList.add('dark');}else{d.classList.remove('dark');}}catch(e){}})();`}
         </Script>
       </head>
       <body className="bg-background text-foreground min-h-screen antialiased overflow-x-hidden">

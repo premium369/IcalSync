@@ -1,10 +1,9 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
-import { plansCatalog, SUPER_HOST_LIMIT } from "@/lib/plans";
+import { plansCatalog } from "@/lib/plans";
 
 export default function Home() {
-  const [ctaHidden, setCtaHidden] = useState(false);
   const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "icalsync.app@gmail.com";
   // Contact form state
   const [contactName, setContactName] = useState("");
@@ -21,29 +20,6 @@ export default function Home() {
     window.location.href = `mailto:${supportEmail}?subject=${subject}&body=${body}`;
     setTimeout(() => setContactSubmitting(false), 500);
   };
-  // Contact section is not required, remove state and handlers.
-
-  useEffect(() => {
-    let last = window.scrollY;
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const curr = window.scrollY;
-        const delta = curr - last;
-        if (delta > 6 && curr > 24) {
-          setCtaHidden(true);
-        } else if (delta < -6) {
-          setCtaHidden(false);
-        }
-        last = curr;
-        ticking = false;
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   return (
     <div className="space-y-16 sm:space-y-24">
@@ -341,9 +317,7 @@ export default function Home() {
       </section>
 
       {/* Sticky mobile CTA: iOS-style glass floating bar with auto-hide on scroll */}
-      <div
-        className={`md:hidden fixed inset-x-3 sm:inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+8px)] z-50 pointer-events-none transition-all duration-300 ${ctaHidden ? "translate-y-6 opacity-0" : "translate-y-0 opacity-100"}`}
-      >
+      <div className="md:hidden fixed inset-x-3 sm:inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+8px)] z-50 pointer-events-none transition-all duration-300 translate-y-0 opacity-100">
         <div className="pointer-events-auto relative rounded-2xl bg-white/70 dark:bg-neutral-800/60 backdrop-blur-xl ring-1 ring-white/60 dark:ring-neutral-700/50 shadow-lg shadow-black/20">
           <div className="flex items-center gap-3 px-4 py-3 max-[360px]:px-3 max-[360px]:py-2">
             <div className="text-[11px] text-gray-800 dark:text-gray-200 max-[360px]:hidden">Instant demo • No signup required</div>

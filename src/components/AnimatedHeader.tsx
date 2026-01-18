@@ -12,7 +12,8 @@ export default function AnimatedHeader({ isLoggedIn }: { isLoggedIn: boolean }) 
   const [progress, setProgress] = useState(0); // 0 -> hero, 1 -> compact
   const [isScrollingDown, setIsScrollingDown] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [lastY, setLastY] = useState(0);
+  const isMobileRef = useRef(false);
+  const lastYRef = useRef(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const pathname = usePathname();
@@ -20,17 +21,19 @@ export default function AnimatedHeader({ isLoggedIn }: { isLoggedIn: boolean }) 
 
   useEffect(() => {
     const onResize = () => {
-      setIsMobile(window.innerWidth < 768); // Tailwind md breakpoint
+      const mobile = window.innerWidth < 768; // Tailwind md breakpoint
+      isMobileRef.current = mobile;
+      setIsMobile(mobile);
       const w = containerRef.current?.offsetWidth ?? window.innerWidth;
       setContainerWidth(w);
     };
     const onScroll = () => {
       const y = window.scrollY || 0;
-      const down = y > lastY;
-      setIsScrollingDown(down);
-      setLastY(y);
+      const down = y > lastYRef.current;
+      lastYRef.current = y;
+      setIsScrollingDown((prev) => (prev === down ? prev : down));
 
-      if (isMobile) {
+      if (isMobileRef.current) {
         setCompact(false);
         setProgress(0);
         return;

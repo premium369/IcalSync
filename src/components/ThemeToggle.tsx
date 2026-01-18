@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 function applyTheme(next: "light" | "dark") {
   const root = document.documentElement;
   root.dataset.theme = next;
-  // Best-effort support for projects that use `dark:` variants
-  // (will only work if Tailwind is configured with darkMode: "class").
   if (next === "dark") {
     root.classList.add("dark");
   } else {
@@ -13,9 +11,6 @@ function applyTheme(next: "light" | "dark") {
   }
   // Hint the UA for built-in form controls, scrollbars, etc.
   root.style.setProperty("color-scheme", next);
-  try {
-    localStorage.setItem("theme", next);
-  } catch {}
 }
 
 export default function ThemeToggle({ className = "" }: { className?: string }) {
@@ -23,23 +18,16 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Ensure client-only logic runs after first paint to avoid hydration mismatch.
     setMounted(true);
+    let initial: "light" | "dark" = "light";
     try {
-      const saved = localStorage.getItem("theme") as "light" | "dark" | null;
-      if (saved === "light" || saved === "dark") {
-        setTheme(saved);
-        applyTheme(saved);
-        return;
-      }
+      const domTheme = (typeof document !== "undefined" && document.documentElement.dataset.theme) as
+        | "light"
+        | "dark"
+        | undefined;
+      const prefersDark = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      initial = domTheme || (prefersDark ? "dark" : "light");
     } catch {}
-    // Fallback to DOM attribute or system preference
-    const domTheme = (typeof document !== "undefined" && document.documentElement.dataset.theme) as
-      | "light"
-      | "dark"
-      | undefined;
-    const prefersDark = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial = domTheme || (prefersDark ? "dark" : "light");
     setTheme(initial);
     applyTheme(initial);
   }, []);
