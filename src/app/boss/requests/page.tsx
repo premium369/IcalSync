@@ -17,11 +17,10 @@ export default async function RequestsPage() {
   return (
     <div className="space-y-8">
       
-      {/* Upgrade Requests Section */}
       <div className="space-y-4">
         <div>
-            <h2 className="text-2xl font-bold tracking-tight">Upgrade Requests</h2>
-            <p className="text-muted-foreground">Review and process plan upgrade requests.</p>
+            <h2 className="text-3xl font-bold tracking-tight">Upgrade Requests</h2>
+            <p className="text-sm text-muted-foreground mt-1">Review and process user plan upgrade requests.</p>
         </div>
         <div className="rounded-md border">
           <Table>
@@ -70,4 +69,3 @@ export default async function RequestsPage() {
     </div>
   );
 }
-

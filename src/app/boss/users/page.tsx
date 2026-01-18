@@ -29,9 +29,11 @@ export default async function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
-        <Button>Add User</Button>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
+          <p className="text-sm text-muted-foreground mt-1">View users, update status, and manage plans.</p>
+        </div>
       </div>
 
       <div className="border rounded-md">

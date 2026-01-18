@@ -3,9 +3,15 @@ import Link from "next/link";
 import AdminBlogsClient from "./AdminBlogsClient";
 import { createServiceClient } from "@/lib/supabase-server";
 
+function getAdminEmails() {
+  const raw = process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || "";
+  return raw.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+}
+
 function isAdmin(email?: string | null) {
-  const list = (process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim()).filter(Boolean);
-  return !!email && list.includes(email);
+  if (!email) return false;
+  const admins = getAdminEmails();
+  return admins.includes(email.toLowerCase());
 }
 
 export default async function AdminBlogs() {

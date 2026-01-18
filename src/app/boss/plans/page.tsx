@@ -15,12 +15,12 @@ export default async function PlansPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Plan Catalog</h2>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Plan Catalog</h2>
+          <p className="text-sm text-muted-foreground mt-1">Overview of available plans and their limits.</p>
+        </div>
       </div>
-      <p className="text-muted-foreground">
-          These plans are currently hardcoded in the application logic.
-      </p>
 
       <div className="border rounded-md">
         <Table>
@@ -37,7 +37,7 @@ export default async function PlansPage() {
             {plans.map((plan) => (
               <TableRow key={plan.id}>
                 <TableCell className="font-medium">{plan.title}</TableCell>
-                <TableCell>{plan.price}</TableCell>
+                <TableCell className="whitespace-nowrap">{plan.price}</TableCell>
                 <TableCell>{plan.propertyLimitLabel}</TableCell>
                 <TableCell>{plan.support}</TableCell>
                 <TableCell>

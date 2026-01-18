@@ -54,8 +54,11 @@ export default async function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Payments</h2>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Payments</h2>
+          <p className="text-sm text-muted-foreground mt-1">Track manual payments recorded against user accounts.</p>
+        </div>
         <AddPaymentDialog />
       </div>
 

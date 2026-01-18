@@ -34,8 +34,11 @@ export default async function AuditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Audit Logs</h2>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Audit Logs</h2>
+          <p className="text-sm text-muted-foreground mt-1">Recent admin actions for security and troubleshooting.</p>
+        </div>
       </div>
 
       <div className="border rounded-md">

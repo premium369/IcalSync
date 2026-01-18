@@ -44,17 +44,20 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="h-full relative">
-      <div className="hidden h-full md:flex md:w-72 md:flex-col md:fixed md:inset-y-0 z-[80] bg-gray-900">
+    <div className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-950 shadow-sm overflow-hidden">
+      <div className="hidden md:flex md:w-72 md:flex-col md:fixed md:inset-y-0 z-[80] bg-neutral-900 text-white border-r border-neutral-800/60">
         <AdminSidebar />
       </div>
-      <main className="md:pl-72">
-        <div className="h-16 border-b flex items-center px-6 bg-white dark:bg-black">
-             <div className="ml-auto flex items-center gap-x-4">
-                <span className="text-sm font-medium">Admin: {user.email}</span>
-             </div>
+      <main className="md:pl-72 bg-background">
+        <div className="h-14 sm:h-16 border-b border-neutral-200 dark:border-neutral-800 flex items-center px-4 sm:px-6 bg-white/90 dark:bg-neutral-950/90 backdrop-blur">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex flex-col">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Admin panel</span>
+              <span className="text-sm text-foreground">{user.email}</span>
+            </div>
+          </div>
         </div>
-        <div className="p-8">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
           {children}
         </div>
       </main>
