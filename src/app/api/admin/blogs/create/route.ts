@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     content: body.content,
     excerpt: body.excerpt || null,
     author_name: body.author_name || "Admin",
+    author_email: auth.user.email,
     featured_image_path: body.featured_image_path || null,
     status,
     views: 0,
