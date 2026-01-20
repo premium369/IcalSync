@@ -12,9 +12,10 @@ function imageUrl(path?: string | null) {
   return base ? `${base}/storage/v1/object/public/blog-images/${path}` : null;
 }
 
-export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
+  const { slug } = await params;
   const supabase = await createClient();
-  const { data } = await supabase.from("blog_posts").select("title, seo_title, seo_description, featured_image_path").eq("slug", params.slug).single();
+  const { data } = await supabase.from("blog_posts").select("title, seo_title, seo_description, featured_image_path").eq("slug", slug).single();
   const title = data?.seo_title || data?.title || "Blog";
   const description = data?.seo_description || "Read more on our blog";
   const image = imageUrl(data?.featured_image_path) || "/vercel.svg";
@@ -26,17 +27,18 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   };
 }
 
-export default async function BlogPostPage({ params }: { params: Params }) {
+export default async function BlogPostPage({ params }: { params: Promise<Params> }) {
+  const { slug } = await params;
   const supabase = await createClient();
   const { data: post, error } = await supabase
     .from("blog_posts")
     .select("id, slug, title, content, excerpt, featured_image_path, created_at, views, status")
-    .eq("slug", params.slug)
+    .eq("slug", slug)
     .single();
 
   if (error || !post || post.status !== "published") {
     // Debugging: show error details if in development or if requested
-    console.error("Blog post error:", error, params.slug);
+    console.error("Blog post error:", error, slug);
     return (
       <div className="mx-auto max-w-3xl px-6 py-16 text-center">
         <h2 className="text-xl font-semibold">Post not found</h2>
@@ -44,7 +46,7 @@ export default async function BlogPostPage({ params }: { params: Params }) {
         {/* Optional: Remove this in final production if sensitive */}
         {(error || !post) && (
           <pre className="mt-4 text-xs text-left bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-auto text-red-500">
-            {JSON.stringify({ error, slug: params.slug, status: post ? (post as any).status : "unknown" }, null, 2)}
+            {JSON.stringify({ error, slug, status: post ? (post as any).status : "unknown" }, null, 2)}
           </pre>
         )}
       </div>
