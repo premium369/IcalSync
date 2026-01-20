@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     title: body.title,
     slug: body.slug,
     content: body.content,
+    content_md: body.content, // Fallback content_md to content for now
     excerpt: body.excerpt || null,
     author_name: body.author_name || "Admin",
     author_email: auth.user.email,
