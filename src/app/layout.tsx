@@ -50,6 +50,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
+        <Script
+          strategy="afterInteractive"
+          src="https://www.googletagmanager.com/gtag/js?id=G-591NVW79GH"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-591NVW79GH');
+          `}
+        </Script>
         <Script id="theme-init" strategy="beforeInteractive">
           {`(function(){try{var d=document.documentElement;var prefersDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;var next=prefersDark?'dark':'light';d.setAttribute('data-theme',next);d.style.colorScheme=next;if(next==='dark'){d.classList.add('dark');}else{d.classList.remove('dark');}}catch(e){}})();`}
         </Script>
