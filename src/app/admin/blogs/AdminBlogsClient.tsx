@@ -19,6 +19,7 @@ export default function AdminBlogsClient({ posts }: { posts: PostRow[] }) {
   const [slug, setSlug] = useState<string>("");
   const [content, setContent] = useState<string>("");
   const [excerpt, setExcerpt] = useState<string>("");
+  const [authorName, setAuthorName] = useState<string>("Admin");
   const [published, setPublished] = useState<boolean>(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -28,6 +29,7 @@ export default function AdminBlogsClient({ posts }: { posts: PostRow[] }) {
     setSlug("");
     setContent("");
     setExcerpt("");
+    setAuthorName("Admin");
     setPublished(false);
     setImageFile(null);
     setError(null);
@@ -56,6 +58,7 @@ export default function AdminBlogsClient({ posts }: { posts: PostRow[] }) {
     setSlug(p.slug || "");
     setContent(p.content || "");
     setExcerpt(p.excerpt || "");
+    setAuthorName(p.author_name || "Admin");
     setPublished(p.status === "published");
     setImageFile(null);
     setShowModal(true);
@@ -82,6 +85,7 @@ export default function AdminBlogsClient({ posts }: { posts: PostRow[] }) {
         slug: useSlug,
         content,
         excerpt,
+        author_name: authorName,
         status: published ? "published" : "draft",
       };
       if (imageFile && imageFile.size > 0) {
@@ -109,7 +113,7 @@ export default function AdminBlogsClient({ posts }: { posts: PostRow[] }) {
     } finally {
       setSaving(false);
     }
-  }, [editingId, title, slug, content, excerpt, published, imageFile, slugify]);
+  }, [editingId, title, slug, content, excerpt, authorName, published, imageFile, slugify]);
 
   return (
     <div className="mx-auto max-w-5xl px-6 space-y-8">
@@ -170,6 +174,10 @@ export default function AdminBlogsClient({ posts }: { posts: PostRow[] }) {
               <div>
                 <label className="text-sm">Excerpt</label>
                 <input value={excerpt} onChange={(e) => setExcerpt(e.target.value)} placeholder="Excerpt" className="mt-1 w-full rounded-md border px-3 py-2" />
+              </div>
+              <div>
+                <label className="text-sm">Author Name</label>
+                <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Author Name" className="mt-1 w-full rounded-md border px-3 py-2" />
               </div>
               <div>
                 <label className="text-sm">Featured image</label>

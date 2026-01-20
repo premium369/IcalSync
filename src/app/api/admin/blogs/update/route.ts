@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     slug: body.slug,
     content: body.content,
     excerpt: body.excerpt || null,
+    author_name: body.author_name || "Admin",
     featured_image_path: body.featured_image_path || null,
     status,
   };
