@@ -33,8 +33,22 @@ export default async function BlogPostPage({ params }: { params: Params }) {
     .select("id, slug, title, content, excerpt, featured_image_path, created_at, views, status")
     .eq("slug", params.slug)
     .single();
+
   if (error || !post || post.status !== "published") {
-    return <div className="mx-auto max-w-3xl px-6 py-16">Post not found.</div>;
+    // Debugging: show error details if in development or if requested
+    console.error("Blog post error:", error, params.slug);
+    return (
+      <div className="mx-auto max-w-3xl px-6 py-16 text-center">
+        <h2 className="text-xl font-semibold">Post not found</h2>
+        <p className="mt-2 text-gray-500">The requested blog post could not be loaded.</p>
+        {/* Optional: Remove this in final production if sensitive */}
+        {(error || !post) && (
+          <pre className="mt-4 text-xs text-left bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-auto text-red-500">
+            {JSON.stringify({ error, slug: params.slug, status: post ? (post as any).status : "unknown" }, null, 2)}
+          </pre>
+        )}
+      </div>
+    );
   }
 
   // Fire-and-forget analytics view increment
